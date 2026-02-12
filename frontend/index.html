@@ -1,0 +1,1751 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Tesla Karaoke - Cyberpunk Edition</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        /* ============================================================
+           Cyberpunk & Neon Theme Variables
+           ============================================================ */
+        :root {
+            --bg-color: #050505;
+            --panel-bg: rgba(20, 20, 20, 0.95);
+            --text-main: #ffffff;
+            --text-dim: #a0a0a0;
+            --neon-purple: #8303f9;
+            --neon-blue: #6dcafd;
+            --neon-pink: #ff00ff;
+            --neon-yellow: #dbee42;
+            --neon-cyan: #00f3ff;
+            --rainbow-gradient: linear-gradient(135deg, var(--neon-purple), var(--neon-blue), var(--neon-pink), var(--neon-yellow));
+        }
+
+        /* 全体レイアウト & 基本設定 */
+        body { 
+            background-color: var(--bg-color); 
+            color: var(--text-main); 
+            font-family: 'Share Tech Mono', 'Courier New', monospace; 
+            margin: 0; 
+            display: flex; 
+            flex-direction: column; 
+            height: 100vh; 
+            overflow: hidden; 
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+        }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #111; }
+        ::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--neon-blue); }
+
+        /* --- 上部エリア --- */
+        .top-container { display: flex; height: 45vh; flex-shrink: 0; gap: 10px; padding: 10px; box-sizing: border-box; }
+
+        .player-area { flex: 4; position: relative; overflow: hidden; background: #000; border-radius: 8px; }
+
+        /* 予約リストエリア (右上) - 通常時 */
+        .queue-area { 
+            flex: 1; 
+            background: var(--panel-bg); 
+            display: flex; 
+            flex-direction: column; 
+            overflow: hidden; 
+            border-radius: 8px;
+            position: relative;
+        }
+
+        /* 編集パネル (右上) - 切り替え用 */
+        .edit-panel {
+            display: none; /* 初期状態は非表示 */
+            flex-direction: column;
+            height: 100%;
+            background: #111;
+            padding: 10px;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+        
+        /* 編集パネル内のスタイル */
+        .edit-form-group { margin-bottom: 8px; }
+        .edit-label { font-size: 0.8em; color: var(--neon-cyan); display: block; margin-bottom: 2px; }
+        .edit-input { 
+            width: 100%; padding: 6px; background: #222; border: 1px solid #444; color: #fff; 
+            font-family: inherit; font-size: 0.9em; box-sizing: border-box; border-radius: 4px; 
+        }
+        .edit-input:focus { border-color: var(--neon-pink); outline: none; }
+        
+        .edit-row { display: flex; gap: 5px; align-items: center; justify-content: space-between; }
+        .edit-btn-group { display: flex; gap: 5px; margin-top: 10px; justify-content: flex-end; }
+
+        /* トグルスイッチ風ボタン */
+        .toggle-btn { 
+            background: #333; border: 1px solid #555; color: #888; flex: 1; 
+            padding: 5px; font-size: 0.8em; cursor: pointer; text-align: center; border-radius: 4px; 
+        }
+        .toggle-btn.active { background: var(--neon-blue); color: #000; border-color: var(--neon-blue); font-weight: bold; }
+
+        /* 予約リストヘッダー */
+        .queue-header { 
+            padding: 12px; background: rgba(255,255,255,0.05); border-bottom: 1px solid #333; 
+            font-weight: bold; font-size: 1em; text-align: center; color: var(--neon-blue); 
+            text-transform: uppercase; letter-spacing: 2px;
+        }
+
+        /* --- 下部エリア --- */
+        .bottom-container { flex: 1; display: flex; padding: 0 10px 10px 10px; gap: 10px; overflow: hidden; box-sizing: border-box; }
+
+        .panel { flex: 1; background: var(--panel-bg); border-radius: 8px; display: flex; flex-direction: column; overflow: hidden; }
+        .panel-header { padding: 10px 15px; flex-shrink: 0; border-bottom: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.3); }
+        .panel-header h3 { margin: 0 0 8px 0; font-size: 1.1em; color: var(--neon-pink); text-shadow: 0 0 5px rgba(255, 0, 255, 0.5); letter-spacing: 1px; }
+        .scroll-list { padding: 10px; flex: 1; overflow-y: auto; }
+
+        /* --- プレイヤー内部 --- */
+        #yt-bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0.01; pointer-events: none; z-index: 0; }
+        #lyrics-view { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: block; scroll-behavior: smooth; overflow: hidden; padding-top: 0; z-index: 1; background: radial-gradient(circle at center, #111 0%, #000 100%); }
+        .lyric-spacer { height: 20vh; }
+        .lyric-line { font-size: 1.5rem; padding: 12px 20px; color: rgba(255,255,255,0.2); transition: all 0.4s; text-align: center; width: fit-content; margin: 0 auto; cursor: pointer; filter: blur(1.5px); }
+        .lyric-line:hover { color: var(--neon-blue); text-shadow: 0 0 8px var(--neon-blue); filter: blur(0px); }
+        .lyric-line.active { color: #fff; font-size: 2.2rem; font-weight: bold; opacity: 1; filter: blur(0px); text-shadow: 0 0 10px rgba(255, 255, 255, 0.9), 0 0 20px rgba(255, 0, 255, 0.3); transform: scale(1); }
+        .lyric-line.history, .lyric-line.active + .lyric-line { color: rgba(255, 255, 255, 0.7); font-size: 1.9rem; filter: blur(0px); text-shadow: none; transform: scale(1); }
+
+        /* 補正オーバーレイ */
+        #calibration-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: calc(100% - 60px); background: rgba(0, 0, 0, 0.9); z-index: 20; flex-direction: column; justify-content: center; align-items: center; text-align: center; cursor: pointer; backdrop-filter: blur(5px); }
+        .calib-instruction { font-size: 1.2em; color: var(--neon-cyan); margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px; }
+        .calib-target { font-size: 2em; font-weight: bold; color: #fff; text-shadow: 0 0 15px var(--neon-pink); padding: 30px; border: 2px solid var(--neon-blue); border-radius: 10px; background: rgba(109, 202, 253, 0.1); max-width: 90%; }
+
+        /* コントロールバー */
+        .player-controls { position: absolute; bottom: 0; left: 0; width: 100%; height: 60px; background: rgba(0,0,0,0.8); display: flex; align-items: center; padding: 0 20px; box-sizing: border-box; z-index: 10; border-top: 1px solid #333; backdrop-filter: blur(10px); }
+        .control-group { display: flex; align-items: center; margin-right: 20px; gap: 15px; }
+        .ctrl-btn { background: none; border: none; color: #fff; font-size: 24px; cursor: pointer; padding: 0; margin: 0; line-height: 1; transition: all 0.2s; opacity: 0.8; }
+        .ctrl-btn:hover { color: var(--neon-blue); text-shadow: 0 0 10px var(--neon-blue); opacity: 1; }
+        #btn-play { font-size: 38px; width: 50px; text-align: center; color: var(--neon-cyan); }
+        #seek-bar { -webkit-appearance: none; appearance: none; flex: 1; cursor: pointer; height: 6px; border-radius: 3px; background-color: #333; background-image: var(--rainbow-gradient); background-repeat: no-repeat; background-size: 0% 100%; transition: background-size 0.1s linear; }
+        #seek-bar::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 0 10px var(--neon-pink); position: relative; z-index: 2; }
+        .time-info { font-size: 24px; color: var(--neon-cyan); margin-left: 15px; min-width: 100px; text-align: right; letter-spacing: 1px; }
+        #offset-toast { position: absolute; top: 20px; right: 20px; background: var(--neon-purple); color: white; padding: 8px 16px; border-radius: 4px; font-size: 14px; font-weight: bold; box-shadow: 0 0 15px var(--neon-purple); opacity: 0; transition: opacity 0.5s; pointer-events: none; z-index: 30; }
+
+        /* リストアイテム */
+        .search-item, .item-row, .queue-item { background: rgba(255, 255, 255, 0.03); margin-bottom: 8px; padding: 10px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; border: 1px solid transparent; transition: all 0.2s; }
+        .search-item:hover, .item-row:hover, .queue-item:hover { background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.2); }
+        .queue-item { border-left: 3px solid #444; }
+        .queue-item.now-playing { background: linear-gradient(90deg, rgba(131, 3, 249, 0.2), transparent); border-left: 3px solid var(--neon-purple); box-shadow: inset 0 0 20px rgba(131, 3, 249, 0.1); }
+        
+        .song-info-vertical { display: flex; flex-direction: column; overflow: hidden; width: 100%; }
+        .song-info-vertical .badges { margin-bottom: 4px; }
+        .song-title { font-size: 1em; font-weight: bold; color: #fff; }
+        .song-info-vertical small { font-size: 0.8em; color: var(--text-dim); }
+        .original-title { font-size: 0.7em; color: #666; margin-top: 2px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        /* タグバッジ */
+        .tag-saved { background: var(--neon-yellow); color: #000; font-weight: bold; box-shadow: 0 0 5px var(--neon-yellow); font-size: 10px; padding: 2px 5px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+        .tag-no-guide { background: var(--neon-cyan); color: #000; font-weight: bold; box-shadow: 0 0 5px var(--neon-cyan); font-size: 10px; padding: 2px 5px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+        .tag-vocal { background: var(--neon-pink); color: #fff; font-weight: bold; box-shadow: 0 0 5px var(--neon-pink); font-size: 10px; padding: 2px 5px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+        .tag-key { background: #444; color: #fff; font-weight: bold; font-size: 10px; padding: 2px 5px; border-radius: 2px; margin-right: 4px; vertical-align: middle; border: 1px solid #666; }
+        .tag-playing { background: var(--neon-purple); color: #fff; font-weight: bold; box-shadow: 0 0 8px var(--neon-purple); font-size: 10px; padding: 2px 5px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+
+        .song-info { flex: 1; font-size: 1.35em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #eee; }
+        .song-info small { color: #888; margin-left: 5px; }
+
+        /* フォーム & ボタン */
+        input[type="text"] { font-size: 24px; width: 100%; box-sizing: border-box; padding: 7px 14px; background: rgba(0, 0, 0, 0.5); color: #fff; border: 1px solid #444; border-radius: 24px; margin-bottom: 0; font-family: inherit; transition: 0.3s; border: 1px solid transparent; background-image: linear-gradient(#000, #000), var(--rainbow-gradient); background-origin: border-box; background-clip: padding-box, border-box; box-shadow: 0 0 15px rgba(131, 3, 249, 0.2); }
+        input[type="text"]:focus { outline: none; border-color: var(--neon-blue); box-shadow: 0 0 10px rgba(109, 202, 253, 0.3); }
+        #myBookSearchInput { width: 50%; }
+        #btn-artist-select { width: 50%; box-sizing: border-box; box-shadow: 0 0 10px var(--neon-purple); padding: 8px; background: #222; color: var(--text-dim); border: 1px solid #444; border-radius: 4px; text-align: left; position: relative; cursor: pointer; }
+        #btn-artist-select:hover { border-color: #666; color: #fff; }
+        #btn-artist-select:after { content: '▼'; position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.7em; color: var(--neon-purple); }
+
+        button { cursor: pointer; padding: 6px 12px; border: none; border-radius: 4px; background: #333; color: white; font-size: 12px; margin-left: 5px; flex-shrink: 0; font-family: inherit; text-transform: uppercase; letter-spacing: 0.5px; transition: all 0.2s; }
+        button:hover { filter: brightness(1.2); }
+        button:active { transform: translateY(1px); }
+        button.queue-btn { background: linear-gradient(135deg, var(--neon-purple), #5d31ff); box-shadow: 0 0 5px rgba(93, 49, 255, 0.4); }
+        button.view-btn { background: #222; border: 1px solid var(--neon-blue); color: var(--neon-blue); }
+        button.view-btn:hover { background: var(--neon-blue); color: #000; box-shadow: 0 0 10px var(--neon-blue); }
+        button.edit-btn { background: #222; border: 1px solid var(--neon-pink); color: var(--neon-pink); }
+        button.edit-btn:hover { background: var(--neon-pink); color: #fff; box-shadow: 0 0 10px var(--neon-pink); }
+        button.delete { background: transparent; border: 1px solid #ff4444; color: #ff4444; font-weight: bold; padding: 4px 8px; }
+        button.delete:hover { background: #ff4444; color: #fff; box-shadow: 0 0 8px #ff4444; }
+        button.secondary { background: #444; color: #ddd; }
+        button.load-more-btn { background: rgba(255,255,255,0.1); width: 100%; padding: 10px; margin-top: 5px; border: 1px solid rgba(255,255,255,0.1); }
+        button.load-more-btn:hover { background: rgba(255,255,255,0.2); border-color: var(--neon-blue); }
+        .panel-header button, #btn-refetch { background: var(--neon-blue); color: #000; font-weight: bold; box-shadow: 0 0 8px var(--neon-blue); }
+        
+        /* 編集パネル用のボタン */
+        .btn-copy-original { width:100%; font-size:0.7em; padding:4px; margin:0 0 5px 0; background:#333; color:#aaa; border:1px dashed #555; }
+        .btn-copy-original:hover { color:#fff; border-color:#fff; }
+        .btn-save { background: var(--neon-pink); color: #fff; font-weight: bold; box-shadow: 0 0 10px var(--neon-pink); }
+
+        /* モーダル */
+        #lyricsModal, #artistModal, #candidateModal { display: none; position: fixed; top: 45vh; left: 0; width: 100%; height: 55vh; background: rgba(0,0,0,0.95); z-index: 1000; backdrop-filter: blur(5px); }
+        .modal-content { background: #111; width: 100%; max-width: none; margin: 0; padding: 15px; box-sizing: border-box; border-top: 2px solid var(--neon-pink); box-shadow: 0 -5px 20px rgba(255, 0, 255, 0.2); height: 100%; display: flex; flex-direction: column; }
+        .modal-content h3 { color: var(--neon-pink); margin-top: 0; }
+        #lyricsDisplay { font-size: 20px; background: #050505; color: #999; padding: 15px; flex: 1; overflow-y: auto; white-space: pre-wrap; font-family: inherit; border-radius: 4px; border: 1px solid #333; line-height: 1.6; }
+        #artistGrid { flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; align-content: start; }
+        .artist-btn { background: #222; padding: 15px; border-radius: 4px; text-align: center; font-weight: bold; border: 1px solid #444; word-break: break-all; cursor: pointer; transition: 0.2s; color: #aaa; }
+        .artist-btn:hover { background: #333; border-color: var(--neon-blue); color: #fff; }
+        .artist-btn.active { border-color: var(--neon-purple); background: rgba(131, 3, 249, 0.2); color: #fff; box-shadow: 0 0 10px rgba(131, 3, 249, 0.3); }
+        .artist-btn.all { background: #333; grid-column: 1 / -1; color: #fff; }
+        #candidateList { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+        .candidate-item { background: #1a1a1a; padding: 12px; border-radius: 4px; border: 1px solid #333; cursor: pointer; transition: 0.2s; }
+        .candidate-item:hover { background: #222; border-color: var(--neon-blue); box-shadow: inset 0 0 10px rgba(109, 202, 253, 0.1); }
+        .candidate-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+        .candidate-title { font-weight: bold; font-size: 1.1em; color: var(--neon-cyan); }
+        .candidate-info { font-size: 0.85em; color: #ccc; }
+        .candidate-score { font-weight: bold; color: var(--neon-purple); font-size: 0.9em; margin-left: 5px; }
+        .candidate-snippet { font-size: 0.85em; color: #666; font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-top: 1px solid #333; padding-top: 5px; margin-top: 5px; }
+        .diff-warn { color: #ff4444; }
+        .diff-ok { color: var(--neon-yellow); }
+        .status-message { text-align: center; color: #666; padding: 20px; font-size: 0.9em; font-style: italic; }
+
+        /* アクション通知トースト (Undoボタン付き) */
+        #action-toast {
+            position: fixed;
+            bottom: 85px; /* コントロールバーの少し上 */
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            
+            /* 変更点: 背景をネオンカラー(明るい色)にし、文字を黒にする */
+            background: var(--neon-blue); 
+            color: #000000; 
+            
+            /* 変更点: 強烈な光彩を追加して「発光体」のように見せる */
+            box-shadow: 0 0 25px rgba(109, 202, 253, 0.8);
+            border: 2px solid #fff; /* 輪郭をはっきりさせる */
+
+            padding: 14px 24px; /* サイズを少し大きく */
+            border-radius: 40px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            z-index: 2000;
+            opacity: 0;
+            font-weight: 900; /* 太字で読みやすく */
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: none;
+        }
+
+        #action-toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        #toast-msg {
+            font-size: 16px; /* 文字サイズアップ */
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        /* UNDOボタンも黒ベースに変更してコントラスト確保 */
+        #toast-undo {
+            background: #000;
+            border: 1px solid #000;
+            color: var(--neon-blue);
+            border-radius: 20px;
+            padding: 6px 14px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 0;
+            box-shadow: none;
+        }
+
+        /* タップ時のフィードバック */
+        #toast-undo:active {
+            background: #fff;
+            color: #000;
+            transform: scale(0.95);
+        }
+
+
+        /* =========================================
+           改善点2: ボタンのタッチフィードバック (Touch Feedback)
+           ========================================= */
+
+        /* ホバー時の明るさ変化は削除 (デスクトップでのデバッグ用に残すなら @media (hover: hover) で囲む手もありますが、今回は削除または弱めます) */
+        button:hover {
+            /* filter: brightness(1.2);  <-- これを削除または無効化 */
+            transform: none; /* ホバーでは動かさない */
+        }
+
+        /* :active (指で押している間) の挙動を強化 */
+        button:active {
+            transform: scale(0.92); /* 物理的に押し込んだように縮小 */
+            filter: brightness(1.5); /* 押した瞬間だけ強く光る */
+        }
+
+        /* 主要なアクションボタンは押した瞬間に色を変える */
+        button.queue-btn:active, 
+        .panel-header button:active, 
+        #btn-refetch:active {
+            background: #fff !important; /* 白くフラッシュ */
+            color: #000 !important;
+            box-shadow: 0 0 15px #fff !important;
+        }
+
+        button.edit-btn:active {
+            background: #fff !important;
+            color: var(--neon-pink) !important;
+        }
+
+        button.delete:active {
+            background: #ff4444 !important;
+            color: #000 !important;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="top-container">
+        <div class="player-area">
+            <div id="yt-bg"></div>
+            <div id="lyrics-view">
+                <div id="status-msg" style="text-align:center; padding-top:20vh; color:#666;">
+                    SYSTEM READY<br><br>WAITING FOR INPUT...
+                </div>
+            </div>
+            
+            <div id="calibration-overlay" onclick="handleCalibrationTap()">
+                <div class="calib-instruction" id="calib-instr">歌い出しで画面をタップしてください</div>
+                <div class="calib-target" id="calib-target">歌詞</div>
+            </div>
+            <div id="offset-toast">Offset Updated</div>
+            
+            <div class="player-controls">
+                <div class="control-group">
+                    <button id="btn-restart" class="ctrl-btn" title="先頭へ">⏮</button>
+                    <button id="btn-play" class="ctrl-btn" title="再生/停止">▶</button>
+                    <button id="btn-skip" class="ctrl-btn" title="次の曲へ">⏭</button>
+                </div>
+                <input type="range" id="seek-bar" value="0" min="0" step="1">
+                <div class="time-info">
+                    <span id="current-time">00:00</span> / <span id="duration-time">00:00</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="queue-area">
+            <div id="queue-view" style="display: flex; flex-direction: column; height: 100%;">
+                <div class="queue-header">PLAYLIST_QUEUE</div>
+                <div id="queueList" class="scroll-list" style="padding: 5px;"></div>
+            </div>
+
+            <div id="edit-view" class="edit-panel">
+                <div class="queue-header" style="background:none; border:none; padding: 0 0 10px 0; text-align: left; color: var(--neon-pink);">
+                    METADATA EDITOR
+                </div>
+                
+                <div class="edit-form-group">
+                    <label class="edit-label">TITLE</label>
+                    <button id="btn-copy-original" class="btn-copy-original">📋 COPY ORIGINAL TITLE</button>
+                    <input type="text" id="edit-title" class="edit-input">
+                </div>
+                
+                <div class="edit-form-group">
+                    <label class="edit-label">ARTIST</label>
+                    <input type="text" id="edit-artist" class="edit-input">
+                </div>
+
+                <div class="edit-form-group">
+                    <label class="edit-label">ATTRIBUTES</label>
+                    <div class="edit-row">
+                        <div id="toggle-guide" class="toggle-btn" onclick="toggleEditAttribute('guide')">NO GUIDE</div>
+                        <div id="toggle-vocal" class="toggle-btn" onclick="toggleEditAttribute('vocal')">VOCAL ON</div>
+                    </div>
+                </div>
+
+                <div class="edit-form-group">
+                    <label class="edit-label">KEY ADJUST</label>
+                    <div class="edit-row" style="background:#222; border:1px solid #444; border-radius:4px; padding:2px;">
+                        <button class="secondary" onclick="stepKey(-1)" style="width:30px; font-size:1.2em;">-</button>
+                        <span id="edit-key-display" style="flex:1; text-align:center; color:var(--neon-yellow); font-weight:bold;">±0</span>
+                        <button class="secondary" onclick="stepKey(1)" style="width:30px; font-size:1.2em;">+</button>
+                    </div>
+                </div>
+
+                <div class="edit-btn-group" style="margin-top:auto;">
+                    <button class="secondary" onclick="closeEditPanel()">CANCEL</button>
+                    <button class="btn-save" onclick="saveEditMetadata()">SAVE</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="bottom-container">
+        <div class="panel">
+            <div class="panel-header">
+                <h3>GLOBAL SEARCH</h3>
+                <div style="display:flex; margin-top:5px;">
+                    <input type="text" id="searchInput" placeholder="Search track or artist..." value="">
+                    <button onclick="handleUnifiedSearch()" style="margin-left:5px;">SEARCH</button>
+                </div>
+            </div>
+            <div id="searchResults" class="scroll-list"></div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">
+                <h3>LOCAL DATABASE</h3>
+                <div style="margin-top:5px; display: flex; gap: 5px;">
+                    <input type="text" id="myBookSearchInput" placeholder="Filter...">
+                    <button id="btn-artist-select" onclick="openArtistModal()">ALL ARTISTS</button>
+                </div>
+            </div>
+            <div id="myBookList" class="scroll-list"></div>
+        </div>
+    </div>
+
+    <div id="lyricsModal">
+        <div class="modal-content">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3 id="modalTitle" style="margin:0;">LYRICS PREVIEW</h3>
+                <button id="btn-refetch" class="secondary" style="font-size:11px;">WRONG LYRICS?</button>
+            </div>
+            <div id="lyricsDisplay"></div>
+            <button onclick="closeModal()" style="margin-top:15px; background:#444;">CLOSE</button>
+        </div>
+    </div>
+
+    <div id="artistModal">
+        <div class="modal-content">
+            <h3>FILTER BY ARTIST</h3>
+            <div id="artistGrid"></div>
+            <button onclick="closeArtistModal()" style="margin-top:15px; background:#444;">CLOSE</button>
+        </div>
+    </div>
+
+    <div id="candidateModal">
+        <div class="modal-content">
+            <h3>SELECT CORRECT LYRICS</h3>
+            
+            <div id="manualSearchArea" style="margin-bottom:15px; border-bottom:1px solid #333; padding-bottom:10px;">
+                <div style="display: flex; gap: 8px; align-items: flex-end;">
+                    
+                    <div style="flex: 2;">
+                        <label style="font-size:0.7em; color:#aaa; display:block; margin-bottom:2px;">TITLE</label>
+                        <input type="text" id="manual-title" class="edit-input" style="font-size:16px; padding:6px;">
+                    </div>
+
+                    <div style="flex: 2; display:flex; gap:5px;">
+                        <div style="flex:1;">
+                            <label style="font-size:0.7em; color:#aaa; display:block; margin-bottom:2px;">ARTIST</label>
+                            <input type="text" id="manual-artist" class="edit-input" style="font-size:16px; padding:6px;">
+                        </div>
+                        <button id="btn-toggle-artist" class="secondary" style="height:34px; min-width:40px; margin:0; align-self:flex-end;" onclick="toggleManualArtist()">ON</button>
+                    </div>
+
+                    <button onclick="searchManualCandidates()" style="flex: 1; height:34px; background:var(--neon-blue); color:#000; font-weight:bold; margin:0;">SEARCH</button>
+                </div>
+            </div>
+
+            <div id="candidateList">
+                <div class="status-message">SCANNING...</div>
+            </div>
+            <button onclick="closeCandidateModal()" style="margin-top:15px; background:#444;">CANCEL</button>
+        </div>
+    </div>
+
+    <div id="action-toast">
+        <span id="toast-msg">Notification</span>
+        <button id="toast-undo">UNDO</button>
+    </div>
+
+    <script src="https://www.youtube.com/iframe_api"></script>
+    <script>
+    /**
+     * Tesla Karaoke Core Library (Client-Side Lyrics Fetching Edition)
+     * MERGED INTO INDEX.HTML
+     */
+
+    // ============================================================
+    //  Mock Mode Logic (File Protocol Support)
+    // ============================================================
+    if (window.location.protocol === 'file:') {
+        console.warn("⚠️ Running in Mock Mode (file:// protocol detected)");
+
+        const MockPlayerClass = class {
+            constructor(elementId, options) {
+                this.elementId = elementId;
+                this.options = options || {};
+                this.events = this.options.events || {};
+                this.currentState = -1;
+                this.currentTime = 0;
+                this.duration = 180;
+                this.timer = null;
+                window.ytPlayer = this;
+
+                const el = document.getElementById(elementId);
+                if (el) {
+                    el.style.background = "#222";
+                    el.style.display = "flex";
+                    el.style.alignItems = "center";
+                    el.style.justifyContent = "center";
+                    el.style.color = "#fff";
+                    el.style.flexDirection = "column";
+                    el.innerHTML = `
+                        <div style="font-size:3em;">🎵</div>
+                        <div style="margin-top:10px; font-weight:bold;">Mock Player Active</div>
+                        <div id="mock-status" style="font-size:0.8em; color:#888;">Ready</div>
+                    `;
+                }
+                setTimeout(() => {
+                    if (this.events.onReady) this.events.onReady({ target: this });
+                }, 100);
+            }
+            loadVideoById(id) { this.currentTime = 0; this.updateStatus(`Playing: ${id}`); this.playVideo(); }
+            playVideo() { if(this.currentState===1)return; this.currentState=1; this.startMockTimer(); this.triggerStateChange(1); this.updateStatus("▶ Playing"); }
+            pauseVideo() { this.currentState=2; this.stopMockTimer(); this.triggerStateChange(2); this.updateStatus("⏸ Paused"); }
+            seekTo(seconds, allowSeekAhead) { this.currentTime=seconds; }
+            getCurrentTime() { return this.currentTime; }
+            getDuration() { return this.duration; }
+            getPlayerState() { return this.currentState; }
+            startMockTimer() { if(this.timer)clearInterval(this.timer); this.timer=setInterval(()=>{ this.currentTime+=0.2; if(this.currentTime>=this.duration){this.currentTime=this.duration; this.currentState=0; this.stopMockTimer(); this.triggerStateChange(0); this.updateStatus("Ended");}}, 200); }
+            stopMockTimer() { if(this.timer)clearInterval(this.timer); this.timer=null; }
+            triggerStateChange(state) { if(this.events.onStateChange) this.events.onStateChange({ data: state, target: this }); }
+            updateStatus(text) { const el=document.getElementById('mock-status'); if(el)el.textContent=text; }
+        };
+
+        const enforceMockYT = () => {
+            if (!window.YT || window.YT.Player !== MockPlayerClass) {
+                window.YT = { PlayerState: { UNSTARTED: -1, ENDED: 0, PLAYING: 1, PAUSED: 2, BUFFERING: 3, CUED: 5 }, Player: MockPlayerClass };
+            }
+        };
+        enforceMockYT();
+        setInterval(enforceMockYT, 500);
+
+        window.addEventListener('load', () => {
+            setTimeout(() => { if (typeof onYouTubeIframeAPIReady === 'function') onYouTubeIframeAPIReady(); }, 500);
+        });
+        
+        window.fetch = async (url) => {
+            if (url.startsWith('/api/search')) {
+                return { ok: true, json: async () => ({ results: [{ video_id: "mock_1", title: "Mock Song", artist: "Mock Artist", duration: "03:00", original_title: "Mock Song [Original]" }], next_page_token: null }) };
+            }
+            return { ok: false };
+        };
+    }
+
+
+    // ============================================================
+    //  Real Application Logic
+    // ============================================================
+
+    const KaraokeCore = (() => {
+        const DB_NAME = 'TeslaKaraokeDB';
+        const STORE_NAME = 'my_book';
+        const BLOCKED_STORE = 'blocked_videos'; // ブラックリスト用
+        
+        let songQueue = [];
+
+        /* --- Helper: Database --- */
+        const initDB = () => {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, 2); // バージョンアップ
+                request.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        db.createObjectStore(STORE_NAME, { keyPath: 'video_id' });
+                    }
+                    if (!db.objectStoreNames.contains(BLOCKED_STORE)) {
+                        db.createObjectStore(BLOCKED_STORE, { keyPath: 'videoId' });
+                    }
+                };
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        };
+
+        /* --- Helper: Text Processing & Scoring --- */
+        const durationToSeconds = (dStr) => {
+            if (!dStr || typeof dStr !== 'string' || !dStr.includes(':')) return 0;
+            try {
+                const parts = dStr.split(':');
+                return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+            } catch (e) { return 0; }
+        };
+
+        const cleanLyricsQuery = (text) => {
+            if (!text) return "";
+            let t = text;
+            t = t.replace(/×?\(.*?\)/g, "");
+            t = t.replace(/×?（.*?）/g, "");
+            t = t.replace(/,/g, " ").replace(/!/g, " ").replace(/\?/g, " ").replace(/\./g, " ");
+            t = t.replace(/・・・/g, " ").replace(/…/g, " ");
+            t = t.replace(/\s+/g, " ");
+            return t.trim();
+        };
+
+        const normalizeForScore = (text) => {
+            if (!text) return "";
+            const lower = text.toLowerCase();
+            return lower.replace(/[^a-z0-9\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/g, "");
+        };
+
+        const hasJapanese = (text) => {
+            if (!text) return false;
+            return /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(text);
+        };
+
+        // 歌詞テキストの品質を解析する
+        const analyzeLrcContent = (lrcText) => {
+            if (!lrcText) return { isSynced: false, hasJapanese: false, timestampRatio: 0, lineCount: 0 };
+
+            const lines = lrcText.split('\n');
+            const timePattern = /\[\d{2}:\d{2}(?:\.\d+)?\]/g;
+            
+            let timeCount = 0;
+            let contentLineCount = 0;
+            let jpCharCount = 0;
+            const allTimestamps = [];
+
+            lines.forEach(line => {
+                const times = line.match(timePattern);
+                if (times) {
+                    timeCount += times.length;
+                    allTimestamps.push(...times);
+                }
+                // タイムスタンプを除去して本文チェック
+                const content = line.replace(timePattern, '').trim();
+                if (content) {
+                    contentLineCount++;
+                    if (hasJapanese(content)) {
+                        jpCharCount++;
+                    }
+                }
+            });
+
+            // 重複タイムスタンプ率 (Unique / Total)
+            const uniqueTimes = new Set(allTimestamps).size;
+            const timestampRatio = timeCount > 0 ? (uniqueTimes / timeCount) : 1.0;
+
+            return {
+                isSynced: timeCount > 5, 
+                hasJapanese: jpCharCount > 0, 
+                timestampRatio: timestampRatio, 
+                lineCount: contentLineCount
+            };
+        };
+
+        const extractLrcMetadata = (lrcText) => {
+            if (!lrcText) return { lrc_title: "Unknown", lrc_artist: "Unknown", first_line_preview: "No lyrics content" };
+            const ti = lrcText.match(/\[ti:(.*?)\]/);
+            const ar = lrcText.match(/\[ar:(.*?)\]/);
+            let preview = "No preview available";
+            const lines = lrcText.split('\n');
+            for (let line of lines) {
+                const cleaned = line.replace(/\[.*?\]/g, '').trim();
+                if (cleaned) {
+                    preview = cleaned;
+                    break;
+                }
+            }
+            return {
+                lrc_title: ti ? ti[1].trim() : "Unknown",
+                lrc_artist: ar ? ar[1].trim() : "Unknown",
+                first_line_preview: preview
+            };
+        };
+
+        const searchAndScoreLRCLib = async (songTitle, artistName, durationStr) => {
+            const cleanedTitle = cleanLyricsQuery(songTitle);
+            const cleanedArtist = cleanLyricsQuery(artistName);
+            const searchTerm = `${cleanedTitle || songTitle} ${cleanedArtist || artistName}`.trim();
+            const url = `https://lrclib.net/api/search?q=${encodeURIComponent(searchTerm)}`;
+            
+            try {
+                const res = await fetch(url);
+                if (!res.ok) return [];
+                const items = await res.json();
+                if (!Array.isArray(items)) return [];
+
+                const targetTitleNorm = normalizeForScore(songTitle);
+                const targetArtistNorm = normalizeForScore(artistName);
+                const ytDuration = durationToSeconds(durationStr);
+                const queryHasJP = hasJapanese(songTitle) || hasJapanese(artistName);
+
+                const scoredItems = items.map(item => {
+                    let score = 0;
+                    
+                    const lrcContent = item.syncedLyrics || item.plainLyrics;
+                    if (!lrcContent) return { ...item, score: -9999 };
+
+                    const analysis = analyzeLrcContent(lrcContent);
+                    const itemTitleNorm = normalizeForScore(item.trackName);
+                    const itemArtistNorm = normalizeForScore(item.artistName);
+                    const lrcDuration = parseFloat(item.duration);
+
+                    if (targetTitleNorm && itemTitleNorm) {
+                        if (targetTitleNorm === itemTitleNorm) score += 60;
+                        else if (targetTitleNorm.includes(itemTitleNorm) || itemTitleNorm.includes(targetTitleNorm)) score += 40;
+                    }
+                    if (targetArtistNorm && itemArtistNorm) {
+                        if (targetArtistNorm === itemArtistNorm) score += 40;
+                        else if (targetArtistNorm.includes(itemArtistNorm) || itemArtistNorm.includes(targetArtistNorm)) score += 20;
+                    }
+
+                    let diff = 999;
+                    if (ytDuration > 0 && lrcDuration > 0) {
+                        diff = Math.abs(ytDuration - lrcDuration);
+                        if (diff <= 3) score += 40;
+                        else if (diff <= 10) score += 20;
+                    }
+
+                    if (item.syncedLyrics && analysis.isSynced) {
+                        score += 1000; 
+                    }
+
+                    if (queryHasJP && !analysis.hasJapanese) {
+                        score -= 1500;
+                    }
+
+                    if (item.syncedLyrics && analysis.timestampRatio < 0.75) {
+                        score -= 1500;
+                    }
+
+                    const trackLower = (item.trackName || "").toLowerCase();
+                    const targetLower = (songTitle || "").toLowerCase();
+                    const noiseWords = ["instrumental", "tv size", "off vocal"];
+                    const isNoise = noiseWords.some(w => trackLower.includes(w) && !targetLower.includes(w));
+                    if (isNoise) score -= 200;
+
+                    return { ...item, score: score, diff: diff };
+                });
+
+                return scoredItems.sort((a, b) => b.score - a.score);
+
+            } catch (e) {
+                console.error("LRCLib fetch error:", e);
+                return [];
+            }
+        };
+
+
+        /* --- Public Methods --- */
+        return {
+            async unifiedSearch(query) {
+                if (!query) return { myBook: [], youtube: [] };
+                
+                const allSaved = await this.getSavedSongs();
+                const blockedVideos = await this.getBlockedVideos();
+                const blockedIds = new Set(blockedVideos.map(b => b.videoId));
+
+                const lowerQuery = query.toLowerCase();
+                const myBookResults = allSaved.filter(song => 
+                    song.title.toLowerCase().includes(lowerQuery) || 
+                    song.artist.toLowerCase().includes(lowerQuery)
+                );
+
+                let filteredYT = [];
+                let nextPageToken = null;
+                try {
+                    if (window.location.protocol !== 'file:') {
+                        const ytData = await this.searchYouTube(query);
+                        const savedIds = new Set(allSaved.map(s => s.video_id));
+                        
+                        // 保存済みID + ブラックリストID を除外
+                        filteredYT = ytData.results.filter(s => 
+                            !savedIds.has(s.video_id) && !blockedIds.has(s.video_id)
+                        );
+                        nextPageToken = ytData.next_page_token;
+                    }
+                } catch (e) {
+                    console.warn("Server search failed:", e);
+                }
+
+                return { myBook: myBookResults, youtube: filteredYT, next_page_token: nextPageToken };
+            },
+
+            async searchYouTube(query, type = 'standard', playlistId = null, pageToken = null) {
+                const params = new URLSearchParams({ type, q: query });
+                if (playlistId) params.append('playlist_id', playlistId);
+                if (pageToken) params.append('page_token', pageToken);
+                
+                const res = await fetch(`/api/search?${params.toString()}`);
+                if (!res.ok) throw new Error('Search failed');
+                return await res.json(); 
+            },
+
+            async fetchAndSaveLyrics(song) {
+                let lyricsText = "";
+                let source = "None";
+
+                try {
+                    const candidates = await searchAndScoreLRCLib(song.title, song.artist, song.duration);
+                    const best = candidates.length > 0 ? candidates[0] : null;
+
+                    if (best && best.score >= 0) {
+                        lyricsText = best.syncedLyrics || best.plainLyrics || "";
+                        source = "LRCLib (Auto)";
+                    }
+                } catch (e) {
+                    console.warn("Lyrics fetch failed:", e);
+                }
+                
+                const db = await initDB();
+                return new Promise((resolve, reject) => {
+                    const transaction = db.transaction(STORE_NAME, 'readwrite');
+                    const store = transaction.objectStore(STORE_NAME);
+                    
+                    const item = { 
+                        ...song, 
+                        lyrics: lyricsText, 
+                        saved_at: Date.now(), 
+                        offset_delta: 0,
+                        playback_rate: 1.0,
+                        source: source,
+                        key: song.key || null, 
+                        has_vocal: song.has_vocal !== undefined ? song.has_vocal : true
+                    };
+                    
+                    const request = store.put(item);
+                    request.onsuccess = () => resolve(item);
+                    request.onerror = () => reject(request.error);
+                });
+            },
+
+            async searchCandidates(song) {
+                const candidates = await searchAndScoreLRCLib(song.title, song.artist, song.duration);
+                return candidates.map(c => {
+                    const lrc = c.syncedLyrics || c.plainLyrics;
+                    const meta = extractLrcMetadata(lrc);
+                    return {
+                        id: c.id,
+                        trackName: c.trackName,
+                        artistName: c.artistName,
+                        duration: parseFloat(c.duration),
+                        score: c.score,
+                        diff: c.diff === 999 ? null : c.diff,
+                        syncedLyrics: c.syncedLyrics,
+                        plainLyrics: c.plainLyrics,
+                        snippet: meta.first_line_preview
+                    };
+                });
+            },
+
+            async saveManualLyrics(song, newLyrics) {
+                const db = await initDB();
+                await new Promise((resolve, reject) => {
+                    const transaction = db.transaction(STORE_NAME, 'readwrite');
+                    const store = transaction.objectStore(STORE_NAME);
+                    
+                    const getReq = store.get(song.video_id);
+                    getReq.onsuccess = () => {
+                        let data = getReq.result;
+                        if (data) {
+                            data.lyrics = newLyrics;
+                            data.offset_delta = 0;
+                            data.source = "Manual Selection";
+                            store.put(data).onsuccess = () => resolve();
+                        } else {
+                            data = { ...song, lyrics: newLyrics, saved_at: Date.now(), source: "Manual Selection" };
+                            store.put(data).onsuccess = () => resolve();
+                        }
+                    };
+                    getReq.onerror = () => reject(getReq.error);
+                });
+                songQueue = songQueue.map(s => s.video_id === song.video_id ? { ...s, lyrics: newLyrics } : s);
+            },
+
+            async updateSongMetadata(songData) {
+                const db = await initDB();
+                await new Promise((resolve, reject) => {
+                    const transaction = db.transaction(STORE_NAME, 'readwrite');
+                    const store = transaction.objectStore(STORE_NAME);
+                    
+                    const getReq = store.get(songData.video_id);
+                    getReq.onsuccess = () => {
+                        let data = getReq.result;
+                        if (data) {
+                            data.title = songData.title;
+                            data.artist = songData.artist;
+                            data.is_no_guide = songData.is_no_guide;
+                            data.has_vocal = songData.has_vocal;
+                            data.key = songData.key;
+                            store.put(data).onsuccess = () => resolve(data);
+                        } else {
+                            reject(new Error("Song not found in DB"));
+                        }
+                    };
+                    getReq.onerror = () => reject(getReq.error);
+                });
+
+                songQueue = songQueue.map(s => {
+                    if (s.video_id === songData.video_id) {
+                        return { 
+                            ...s, 
+                            title: songData.title, 
+                            artist: songData.artist,
+                            is_no_guide: songData.is_no_guide,
+                            has_vocal: songData.has_vocal,
+                            key: songData.key
+                        };
+                    }
+                    return s;
+                });
+            },
+
+            async getSavedSongs() {
+                const db = await initDB();
+                return new Promise((resolve, reject) => {
+                    const transaction = db.transaction(STORE_NAME, 'readonly');
+                    const store = transaction.objectStore(STORE_NAME);
+                    const request = store.getAll();
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
+            },
+
+            async removeSavedSong(videoId) {
+                const db = await initDB();
+                await new Promise((resolve, reject) => {
+                    const transaction = db.transaction(STORE_NAME, 'readwrite');
+                    const store = transaction.objectStore(STORE_NAME);
+                    const request = store.delete(videoId);
+                    request.onsuccess = () => resolve();
+                    request.onerror = () => reject(request.error);
+                });
+                songQueue = songQueue.filter(s => s.video_id !== videoId);
+            },
+
+            async updateSongTiming(videoId, offsetDelta, playbackRate) {
+                const db = await initDB();
+                await new Promise((resolve, reject) => {
+                    const transaction = db.transaction(STORE_NAME, 'readwrite');
+                    const store = transaction.objectStore(STORE_NAME);
+                    const getReq = store.get(videoId);
+                    getReq.onsuccess = () => {
+                        const data = getReq.result;
+                        if (data) {
+                            data.offset_delta = offsetDelta;
+                            data.playback_rate = playbackRate;
+                            store.put(data).onsuccess = () => resolve();
+                        } else { resolve(); }
+                    };
+                    getReq.onerror = () => reject(getReq.error);
+                });
+                songQueue = songQueue.map(s => s.video_id === videoId ? { ...s, offset_delta: offsetDelta, playback_rate: playbackRate } : s);
+            },
+
+            /* --- Blacklist Methods --- */
+            async addToBlacklist(song) {
+                const db = await initDB();
+                return new Promise((resolve, reject) => {
+                    const transaction = db.transaction(BLOCKED_STORE, 'readwrite');
+                    const store = transaction.objectStore(BLOCKED_STORE);
+                    const item = {
+                        videoId: song.video_id,
+                        title: song.title,
+                        artist: song.artist,
+                        addedAt: Date.now()
+                    };
+                    const request = store.put(item);
+                    request.onsuccess = () => resolve();
+                    request.onerror = () => reject(request.error);
+                });
+            },
+
+            async getBlockedVideos() {
+                const db = await initDB();
+                return new Promise((resolve, reject) => {
+                    const transaction = db.transaction(BLOCKED_STORE, 'readonly');
+                    const store = transaction.objectStore(BLOCKED_STORE);
+                    const request = store.getAll();
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
+            },
+
+            async removeFromBlacklist(videoId) {
+                const db = await initDB();
+                await new Promise((resolve, reject) => {
+                    const transaction = db.transaction(BLOCKED_STORE, 'readwrite');
+                    const store = transaction.objectStore(BLOCKED_STORE);
+                    const request = store.delete(videoId);
+                    request.onsuccess = () => resolve();
+                    request.onerror = () => reject(request.error);
+                });
+            },
+
+            addToQueue(song) {
+                const safeSong = { 
+                    ...song, 
+                    offset_delta: song.offset_delta || 0, 
+                    playback_rate: song.playback_rate || 1.0,
+                    queue_id: Date.now() + Math.random() 
+                };
+                songQueue.push(safeSong);
+                return songQueue;
+            },
+            removeFromQueue(queueId) {
+                songQueue = songQueue.filter(s => s.queue_id !== queueId);
+                return songQueue;
+            },
+            getQueue() { return songQueue; },
+
+            parseLRC(lrcText) {
+                if (!lrcText) return [];
+                const lines = lrcText.split('\n');
+                const result = [];
+                const timePattern = /\[(\d{2,3}):(\d{2}(?:\.\d+)?)\]/g;
+                lines.forEach(line => {
+                    let match;
+                    const text = line.replace(timePattern, '').trim();
+                    if (!text) return;
+                    timePattern.lastIndex = 0;
+                    while ((match = timePattern.exec(line)) !== null) {
+                        const min = parseInt(match[1]);
+                        const sec = parseFloat(match[2]);
+                        result.push({ time: min * 60 + sec, text });
+                    }
+                });
+                return result.sort((a, b) => a.time - b.time);
+            },
+            getNextFromQueue() { return songQueue.length === 0 ? null : songQueue.shift(); }
+        };
+    })();
+    </script>
+    <script>
+        /* --- グローバル変数 --- */
+        let ytPlayer;
+        let currentRawLrc = [];
+        let currentLrc = [];
+        let currentSong = null;
+        let syncTimer;
+        let isPlayerRunning = false;
+        let isUserSeeking = false;
+        let lastActiveIdx = -1;
+        
+        let cachedMyBookSongs = [];
+        let cachedBlockedVideos = [];
+        let lastSearchQuery = '';
+        let nextPageToken = null;
+
+        let isCalibrating = false;
+        let calibrationStep = 0;
+        let calibTimeStartActual = 0;
+        let calibTimeStartLrc = 0;
+        let calibTimeEndLrc = 0;
+
+        let currentArtistFilter = "";
+        let viewingSong = null;
+
+        let editingSong = null;
+        let editKeyVal = 0;
+        let editIsNoGuide = false;
+        let editHasVocal = true;
+
+        let isManualArtistOn = true;
+        let currentCandidateSong = null;
+
+        let toastTimeout;
+
+        /* --- 初期化・イベント設定 --- */
+        window.onload = () => {
+            updateMyBookUI();
+            updateQueueUI();
+            
+            const seekBar = document.getElementById('seek-bar');
+            if (seekBar) {
+                seekBar.addEventListener('input', () => {
+                    isUserSeeking = true;
+                    const currentTimeSpan = document.getElementById('current-time');
+                    if(currentTimeSpan) currentTimeSpan.textContent = formatTime(seekBar.value);
+                    updateSeekColor();
+                });
+                seekBar.addEventListener('change', () => {
+                    if(ytPlayer) ytPlayer.seekTo(seekBar.value, true);
+                    isUserSeeking = false;
+                });
+            }
+
+            const btnRestart = document.getElementById('btn-restart');
+            if (btnRestart) btnRestart.onclick = () => {
+                if(ytPlayer && isPlayerRunning) ytPlayer.seekTo(0, true);
+            };
+
+            const btnSkip = document.getElementById('btn-skip');
+            if (btnSkip) btnSkip.onclick = () => {
+                if(ytPlayer && isPlayerRunning) ytPlayer.seekTo(ytPlayer.getDuration(), true);
+            };
+
+            const btnPlay = document.getElementById('btn-play');
+            if (btnPlay) btnPlay.onclick = () => {
+                if(!ytPlayer || !isPlayerRunning) {
+                    playNextInQueue();
+                    return;
+                }
+                const state = ytPlayer.getPlayerState();
+                if(state === YT.PlayerState.PLAYING) ytPlayer.pauseVideo();
+                else ytPlayer.playVideo();
+            };
+
+            const myBookInput = document.getElementById('myBookSearchInput');
+            if (myBookInput) myBookInput.addEventListener('input', renderMyBookList);
+
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput) searchInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') handleUnifiedSearch();
+            });
+
+            const btnRefetch = document.getElementById('btn-refetch');
+            if (btnRefetch) btnRefetch.onclick = () => {
+                if(viewingSong) openCandidateSearch(viewingSong);
+            };
+
+            document.getElementById('btn-copy-original').onclick = () => {
+                if(editingSong) {
+                    document.getElementById('edit-title').value = editingSong.original_title || editingSong.title;
+                }
+            };
+        };
+
+        function showActionToast(message, undoCallback = null) {
+            const toast = document.getElementById('action-toast');
+            const msgEl = document.getElementById('toast-msg');
+            const undoBtn = document.getElementById('toast-undo');
+
+            if (toastTimeout) clearTimeout(toastTimeout);
+            msgEl.textContent = message;
+
+            if (undoCallback) {
+                undoBtn.style.display = 'block';
+                undoBtn.onclick = () => {
+                    undoCallback();
+                    hideActionToast();
+                };
+            } else {
+                undoBtn.style.display = 'none';
+                undoBtn.onclick = null;
+            }
+
+            toast.classList.add('show');
+            toastTimeout = setTimeout(hideActionToast, 4000);
+        }
+
+        function hideActionToast() {
+            const toast = document.getElementById('action-toast');
+            toast.classList.remove('show');
+        }
+
+        function onYouTubeIframeAPIReady() {
+            ytPlayer = new YT.Player('yt-bg', {
+                height: '100%', width: '100%',
+                playerVars: { 
+                    'autoplay': 0, 
+                    'controls': 0, 
+                    'disablekb': 1, 
+                    'rel': 0,
+                    'origin': window.location.origin // Originエラー対策
+                },
+                events: { 
+                    'onStateChange': onPlayerStateChange,
+                    'onError': onPlayerError // エラーハンドリング追加
+                }
+            });
+        }
+
+        /* --- エラーハンドリング (v2.2仕様) --- */
+        async function onPlayerError(event) {
+            console.error('YouTube Player Error:', event.data);
+            
+            // 150/101: 埋め込み制限エラー
+            if (event.data === 150 || event.data === 101) {
+                if (currentSong) {
+                    const errorId = currentSong.video_id;
+                    
+                    // 1. ブラックリスト登録
+                    await KaraokeCore.addToBlacklist(currentSong);
+                    
+                    // 2. DOMから即時削除 (検索結果リスト)
+                    const row = document.querySelector(`.search-item[data-video-id="${errorId}"]`);
+                    if (row) row.remove();
+
+                    // 3. 通知
+                    showActionToast("Playback restricted by owner. Skipping...");
+                    
+                    // 4. スキップ (通常のスキップ処理を流用)
+                    playNextInQueue();
+                }
+            } else {
+                // その他のエラーも念のためスキップ
+                showActionToast("Unexpected player error. Skipping...");
+                playNextInQueue();
+            }
+        }
+
+        function onPlayerStateChange(event) {
+            const playBtn = document.getElementById('btn-play');
+            if (event.data == YT.PlayerState.PLAYING) {
+                playBtn.textContent = '⏸';
+                startLrcSync();
+            } else {
+                playBtn.textContent = '▶';
+                if (event.data == YT.PlayerState.ENDED) {
+                    if (isCalibrating) endCalibration(false);
+                    else playNextInQueue();
+                }
+            }
+        }
+
+        /* --- 編集パネルロジック --- */
+        function openEditPanel(song) {
+            editingSong = song;
+            document.getElementById('queue-view').style.display = 'none';
+            document.getElementById('edit-view').style.display = 'flex';
+            document.getElementById('edit-title').value = song.title;
+            document.getElementById('edit-artist').value = song.artist;
+            editIsNoGuide = !!song.is_no_guide;
+            editHasVocal = (song.has_vocal !== undefined) ? song.has_vocal : true;
+            editKeyVal = 0;
+            if(song.key) {
+                const match = song.key.match(/([+-]?\d+)/);
+                if(match) editKeyVal = parseInt(match[1]);
+            }
+            updateEditUI();
+        }
+
+        function closeEditPanel() {
+            editingSong = null;
+            document.getElementById('edit-view').style.display = 'none';
+            document.getElementById('queue-view').style.display = 'flex';
+        }
+
+        function updateEditUI() {
+            const sign = editKeyVal > 0 ? "+" : "";
+            document.getElementById('edit-key-display').textContent = editKeyVal === 0 ? "±0" : `${sign}${editKeyVal}`;
+            const guideBtn = document.getElementById('toggle-guide');
+            const vocalBtn = document.getElementById('toggle-vocal');
+            if(editIsNoGuide) guideBtn.classList.add('active'); else guideBtn.classList.remove('active');
+            if(editHasVocal) {
+                vocalBtn.classList.add('active'); vocalBtn.textContent = "VOCAL ON";
+            } else {
+                vocalBtn.classList.remove('active'); vocalBtn.textContent = "OFF VOCAL";
+            }
+        }
+
+        function stepKey(step) { editKeyVal += step; updateEditUI(); }
+        function toggleEditAttribute(attr) {
+            if(attr === 'guide') editIsNoGuide = !editIsNoGuide;
+            if(attr === 'vocal') editHasVocal = !editHasVocal;
+            updateEditUI();
+        }
+
+        async function saveEditMetadata() {
+            if(!editingSong) return;
+            const oldData = { ...editingSong };
+            const newTitle = document.getElementById('edit-title').value;
+            const newArtist = document.getElementById('edit-artist').value;
+            const sign = editKeyVal > 0 ? "+" : "";
+            const newKey = editKeyVal === 0 ? null : `${sign}${editKeyVal}KEY`;
+            const updatedData = {
+                video_id: editingSong.video_id, title: newTitle, artist: newArtist,
+                is_no_guide: editIsNoGuide, has_vocal: editHasVocal, key: newKey
+            };
+            try {
+                await KaraokeCore.updateSongMetadata(updatedData);
+                closeEditPanel(); updateMyBookUI(); updateQueueUI();
+                showActionToast("Metadata Saved", async () => {
+                    await KaraokeCore.updateSongMetadata(oldData); updateMyBookUI(); updateQueueUI();
+                });
+            } catch(e) { showActionToast("Update failed: " + e); }
+        }
+
+        /* --- 予約リスト --- */
+        function updateQueueUI() {
+            const list = KaraokeCore.getQueue();
+            const div = document.getElementById('queueList');
+            div.innerHTML = '';
+            if (currentSong) div.appendChild(createQueueItem(currentSong, true));
+            list.forEach(song => {
+                const row = createQueueItem(song, false);
+                const delBtn = document.createElement('button');
+                delBtn.className = 'delete';
+                delBtn.textContent = '×';
+                delBtn.onclick = () => { removeFromQueue(song.queue_id); };
+                row.appendChild(delBtn);
+                div.appendChild(row);
+            });
+        }
+        
+        function createQueueItem(song, isPlaying) {
+            const row = document.createElement('div');
+            row.className = isPlaying ? 'queue-item now-playing' : 'queue-item';
+            let badges = '';
+            if(isPlaying) badges += `<span class="tag-playing">PLAYING</span>`;
+            if(song.is_no_guide) badges += `<span class="tag-no-guide">No Guide</span>`;
+            if(song.has_vocal) badges += `<span class="tag-vocal">Vocal</span>`;
+            if(song.key) badges += `<span class="tag-key">${song.key}</span>`;
+            row.innerHTML = `<div class="song-info-vertical"><div class="badges">${badges}</div><span class="song-title">${song.title}</span><small>${song.artist}</small></div>`;
+            return row;
+        }
+
+        function removeFromQueue(id) {
+            KaraokeCore.removeFromQueue(id);
+            updateQueueUI();
+        }
+
+        /* --- 歌詞候補 手動選択 --- */
+        async function openCandidateSearch(song) {
+            currentCandidateSong = song;
+            document.getElementById('candidateModal').style.display = 'block';
+            document.getElementById('manual-title').value = song.title;
+            document.getElementById('manual-artist').value = song.artist;
+            isManualArtistOn = true;
+            updateManualArtistToggleUI();
+            await executeCandidateSearch(song.title, song.artist, song.duration);
+        }
+
+        function toggleManualArtist() { isManualArtistOn = !isManualArtistOn; updateManualArtistToggleUI(); }
+        function updateManualArtistToggleUI() {
+            const btn = document.getElementById('btn-toggle-artist');
+            const input = document.getElementById('manual-artist');
+            if(isManualArtistOn) {
+                btn.textContent = "ON"; btn.classList.add("active"); btn.style.background = "var(--neon-blue)";
+                input.style.opacity = 1.0; input.disabled = false;
+            } else {
+                btn.textContent = "OFF"; btn.classList.remove("active"); btn.style.background = "#333";
+                input.style.opacity = 0.3; input.disabled = true;
+            }
+        }
+
+        async function searchManualCandidates() {
+            if(!currentCandidateSong) return;
+            const title = document.getElementById('manual-title').value;
+            const artist = isManualArtistOn ? document.getElementById('manual-artist').value : "";
+            await executeCandidateSearch(title, artist, currentCandidateSong.duration);
+        }
+
+        async function executeCandidateSearch(title, artist, duration) {
+            const listDiv = document.getElementById('candidateList');
+            listDiv.innerHTML = '<div class="status-message">SEARCHING CANDIDATES...</div>';
+            try {
+                const candidates = await KaraokeCore.searchCandidates({ title, artist, duration });
+                listDiv.innerHTML = '';
+                if (candidates.length === 0) { listDiv.innerHTML = '<div class="status-message">NO CANDIDATES FOUND</div>'; return; }
+                candidates.forEach(cand => {
+                    const row = document.createElement('div'); row.className = 'candidate-item';
+                    const diffText = cand.diff !== null ? (cand.diff + 's diff') : '';
+                    const diffClass = (cand.diff !== null && cand.diff <= 10) ? 'diff-ok' : 'diff-warn';
+                    const timeStr = `${Math.floor(cand.duration / 60)}:${String(Math.floor(cand.duration % 60)).padStart(2,'0')}`;
+                    row.innerHTML = `<div class="candidate-meta"><span class="candidate-title">${cand.trackName} <small>/ ${cand.artistName}</small></span><span class="candidate-score">Score: ${Math.round(cand.score)}</span></div><div class="candidate-info">${timeStr} (<span class="${diffClass}">${diffText}</span>) | ${cand.syncedLyrics ? "★SYNCED" : "PLAIN"}</div><div class="candidate-snippet">${cand.snippet || "No Preview"}</div>`;
+                    row.onclick = () => selectCandidate(currentCandidateSong, cand);
+                    listDiv.appendChild(row);
+                });
+            } catch (e) { listDiv.innerHTML = '<div class="status-message">ERROR OCCURRED</div>'; }
+        }
+
+        async function selectCandidate(song, candidate) {
+            const oldLyrics = song.lyrics;
+            const newLyrics = candidate.syncedLyrics || candidate.plainLyrics;
+            try {
+                await KaraokeCore.saveManualLyrics(song, newLyrics);
+                closeCandidateModal(); closeModal(); updateMyBookUI();
+                if(currentSong && currentSong.video_id === song.video_id) {
+                     currentSong.lyrics = newLyrics; currentRawLrc = KaraokeCore.parseLRC(newLyrics); applyOffsetAndRender();
+                }
+                showActionToast(`Lyrics Updated: "${candidate.trackName}"`, async () => {
+                    await KaraokeCore.saveManualLyrics(song, oldLyrics); updateMyBookUI();
+                    if(currentSong && currentSong.video_id === song.video_id) {
+                        currentSong.lyrics = oldLyrics; currentRawLrc = KaraokeCore.parseLRC(oldLyrics); applyOffsetAndRender();
+                    }
+                });
+            } catch (e) { showActionToast("Save Failed: " + e.message); }
+        }
+
+        function closeCandidateModal() { currentCandidateSong = null; document.getElementById('candidateModal').style.display = 'none'; }
+
+        /* 補正ロジック */
+        function handleCalibrationTap() {
+            if (!isCalibrating) return;
+            const tapTime = ytPlayer.getCurrentTime();
+            if (calibrationStep === 1) { calibTimeStartActual = tapTime; startCalibrationStep2(); }
+            else if (calibrationStep === 2) {
+                const calibTimeEndActual = tapTime;
+                const lrcDuration = calibTimeEndLrc - calibTimeStartLrc;
+                const actualDuration = calibTimeEndActual - calibTimeStartActual;
+                if (lrcDuration > 0) {
+                    const ratio = actualDuration / lrcDuration; const offset = calibTimeStartActual - (calibTimeStartLrc * ratio);
+                    currentSong.playback_rate = ratio; currentSong.offset_delta = offset;
+                    KaraokeCore.updateSongTiming(currentSong.video_id, offset, ratio); endCalibration(true);
+                } else { showActionToast("Duration too short to calibrate."); endCalibration(false); }
+            }
+        }
+
+        function startCalibrationStep2() {
+            calibrationStep = 2; document.getElementById('calib-instr').textContent = "TAP AT THE LAST LINE";
+            const lastLine = currentRawLrc[currentRawLrc.length - 1]; calibTimeEndLrc = lastLine.time;
+            document.getElementById('calib-target').textContent = lastLine.text;
+            ytPlayer.seekTo(Math.max(0, lastLine.time - 5), true);
+        }
+
+        function endCalibration(saved) {
+            isCalibrating = false; calibrationStep = 0; document.getElementById('calibration-overlay').style.display = 'none';
+            if (saved) {
+                applyOffsetAndRender();
+                const toast = document.getElementById('offset-toast'); toast.innerText = "Timing Calibrated!";
+                toast.style.opacity = 1; setTimeout(() => toast.style.opacity = 0, 2000);
+                ytPlayer.seekTo(0, true);
+            }
+        }
+
+        /* My Book / Blocked UI */
+        async function updateMyBookUI() {
+            cachedMyBookSongs = await KaraokeCore.getSavedSongs();
+            cachedBlockedVideos = await KaraokeCore.getBlockedVideos();
+            renderMyBookList();   
+        }
+
+        function openArtistModal() {
+            const grid = document.getElementById('artistGrid');
+            grid.innerHTML = '';
+            
+            // ALL ARTISTS
+            const allBtn = document.createElement('div');
+            allBtn.className = `artist-btn all ${currentArtistFilter === "" ? "active" : ""}`;
+            allBtn.textContent = "ALL ARTISTS";
+            allBtn.onclick = () => selectArtist("");
+            grid.appendChild(allBtn);
+
+            // 各アーティスト
+            const artists = [...new Set(cachedMyBookSongs.map(s => s.artist))].sort();
+            artists.forEach(artist => {
+                const btn = document.createElement('div');
+                btn.className = `artist-btn ${currentArtistFilter === artist ? "active" : ""}`;
+                btn.textContent = artist;
+                btn.onclick = () => selectArtist(artist);
+                grid.appendChild(btn);
+            });
+
+            // BLOCKED (一番最後に追加)
+            const blockBtn = document.createElement('div');
+            blockBtn.className = `artist-btn all ${currentArtistFilter === "__BLOCKED__" ? "active" : ""}`;
+            blockBtn.style.borderColor = "var(--neon-pink)";
+            blockBtn.textContent = "BLOCKED";
+            blockBtn.onclick = () => selectArtist("__BLOCKED__");
+            grid.appendChild(blockBtn);
+
+            document.getElementById('artistModal').style.display = 'block';
+        }
+
+        function selectArtist(artist) {
+            currentArtistFilter = artist;
+            let label = artist;
+            if (artist === "") label = "ALL ARTISTS";
+            if (artist === "__BLOCKED__") label = "BLOCKED";
+            document.getElementById('btn-artist-select').textContent = label;
+            renderMyBookList();
+            closeArtistModal();
+        }
+
+        function closeArtistModal() { document.getElementById('artistModal').style.display = 'none'; }
+
+        function renderMyBookList() {
+            const textFilter = document.getElementById('myBookSearchInput').value.toLowerCase();
+            const div = document.getElementById('myBookList');
+            div.innerHTML = '';
+
+            // 通常リスト or ブラックリストの切り替え
+            if (currentArtistFilter === "__BLOCKED__") {
+                renderBlockedList(div, textFilter);
+                return;
+            }
+
+            const filteredSongs = cachedMyBookSongs.filter(song => {
+                const matchText = song.title.toLowerCase().includes(textFilter) || song.artist.toLowerCase().includes(textFilter);
+                const matchArtist = currentArtistFilter === "" || song.artist === currentArtistFilter;
+                return matchText && matchArtist;
+            });
+
+            filteredSongs.forEach(song => {
+                const row = document.createElement('div');
+                row.className = 'item-row';
+                let badges = '';
+                if(song.is_no_guide) badges += `<span class="tag-no-guide">No Guide</span>`;
+                if(song.has_vocal) badges += `<span class="tag-vocal">Vocal</span>`;
+                if(song.key) badges += `<span class="tag-key">${song.key}</span>`;
+
+                row.innerHTML = `<div class="song-info">${badges}${song.title}</div>`;
+                
+                const queueBtn = document.createElement('button');
+                queueBtn.className = 'queue-btn'; queueBtn.textContent = 'QUEUE';
+                queueBtn.onclick = () => {
+                    KaraokeCore.addToQueue(song); updateQueueUI();
+                    queueBtn.textContent = 'ADDED'; setTimeout(() => queueBtn.textContent = 'QUEUE', 1000);
+                    if (!isPlayerRunning) playNextInQueue();
+                };
+                
+                const editBtn = document.createElement('button');
+                editBtn.className = 'edit-btn'; editBtn.textContent = 'EDIT';
+                editBtn.onclick = () => openEditPanel(song);
+
+                const viewBtn = document.createElement('button');
+                viewBtn.className = 'view-btn'; viewBtn.textContent = 'LYRICS';
+                viewBtn.onclick = () => showLyrics(song);
+                
+                const delBtn = document.createElement('button');
+                delBtn.className = 'delete'; delBtn.textContent = 'DEL';
+                delBtn.onclick = () => deleteFromBook(song.video_id);
+                
+                row.appendChild(queueBtn); row.appendChild(editBtn); row.appendChild(viewBtn); row.appendChild(delBtn);
+                div.appendChild(row);
+            });
+        }
+
+        // ブラックリスト専用レンダリング (v2.2仕様)
+        function renderBlockedList(container, textFilter) {
+            const filteredBlocked = cachedBlockedVideos.filter(b => 
+                b.title.toLowerCase().includes(textFilter) || b.artist.toLowerCase().includes(textFilter)
+            );
+
+            if (filteredBlocked.length === 0) {
+                container.innerHTML = '<div class="status-message">NO BLOCKED VIDEOS</div>';
+                return;
+            }
+
+            filteredBlocked.forEach(item => {
+                const row = document.createElement('div');
+                row.className = 'item-row';
+                row.style.borderLeft = "3px solid var(--neon-pink)";
+
+                row.innerHTML = `
+                    <div class="song-info">
+                        <span style="color:var(--neon-pink); font-size:0.8em; margin-right:8px;">[BLOCKED]</span>
+                        ${item.title} <small>/ ${item.artist}</small>
+                    </div>`;
+
+                const delBtn = document.createElement('button');
+                delBtn.className = 'delete';
+                delBtn.textContent = 'DEL';
+                delBtn.onclick = async () => {
+                    await KaraokeCore.removeFromBlacklist(item.videoId);
+                    updateMyBookUI();
+                    showActionToast("Restriction removed.");
+                };
+
+                row.appendChild(delBtn);
+                container.appendChild(row);
+            });
+        }
+
+        async function deleteFromBook(id) {
+            const songToBackup = cachedMyBookSongs.find(s => s.video_id === id);
+            await KaraokeCore.removeSavedSong(id);
+            const searchRow = document.querySelector(`.search-item[data-video-id="${id}"]`);
+            if (searchRow) { searchRow.querySelector('.tag-saved').style.display = 'none'; }
+            updateMyBookUI(); updateQueueUI();
+
+            if(songToBackup) {
+                showActionToast(`Deleted "${songToBackup.title}"`, async () => {
+                    await KaraokeCore.saveManualLyrics(songToBackup, songToBackup.lyrics);
+                    if (searchRow) { searchRow.querySelector('.tag-saved').style.display = 'inline-block'; }
+                    updateMyBookUI(); updateQueueUI();
+                });
+            }
+        }
+
+        /* 検索ロジック */
+        async function handleUnifiedSearch() {
+            const q = document.getElementById('searchInput').value;
+            if (!q.trim()) return;
+            lastSearchQuery = q;
+            nextPageToken = null;
+            const resultsDiv = document.getElementById('searchResults');
+            resultsDiv.innerHTML = '<div class="status-message">SEARCHING...</div>';
+            try {
+                const data = await KaraokeCore.unifiedSearch(q);
+                resultsDiv.innerHTML = '';
+                if (data.myBook.length === 0 && data.youtube.length === 0) {
+                    resultsDiv.innerHTML = '<div class="status-message">NO RESULTS FOUND.</div>';
+                    return;
+                }
+                data.myBook.forEach(song => resultsDiv.appendChild(createSearchResultRow(song, true)));
+                data.youtube.forEach(song => resultsDiv.appendChild(createSearchResultRow(song, false)));
+                nextPageToken = data.next_page_token;
+                if (nextPageToken) addLoadMoreButton(resultsDiv);
+            } catch (e) {
+                resultsDiv.innerHTML = '<div class="status-message" style="color:#ff4444;">ERROR: ' + e.message + '</div>';
+            }
+        }
+
+        function addLoadMoreButton(container) {
+            const btnContainer = document.createElement('div');
+            btnContainer.className = 'load-more-container'; btnContainer.style.textAlign = 'center'; btnContainer.style.padding = '5px 0';
+            const btn = document.createElement('button');
+            btn.textContent = 'LOAD MORE'; btn.className = 'load-more-btn';
+            btn.onclick = loadMoreYoutubeResults;
+            btnContainer.appendChild(btn); container.appendChild(btnContainer);
+        }
+
+        async function loadMoreYoutubeResults() {
+            const btnContainer = document.querySelector('.load-more-container');
+            const btn = btnContainer.querySelector('button');
+            btn.textContent = 'LOADING...'; btn.disabled = true;
+            try {
+                const data = await KaraokeCore.searchYouTube(lastSearchQuery, 'standard', null, nextPageToken);
+                btnContainer.remove();
+                const resultsDiv = document.getElementById('searchResults');
+                
+                // ここでもブラックリスト除外
+                const blockedIds = new Set(cachedBlockedVideos.map(b => b.videoId));
+
+                data.results.forEach(song => {
+                    if (blockedIds.has(song.video_id)) return;
+                    const isSaved = cachedMyBookSongs.some(s => s.video_id === song.video_id);
+                    resultsDiv.appendChild(createSearchResultRow(song, isSaved));
+                });
+                nextPageToken = data.next_page_token;
+                if (nextPageToken) addLoadMoreButton(resultsDiv);
+            } catch(e) { btn.textContent = 'FAILED'; btn.disabled = false; }
+        }
+
+        function createSearchResultRow(song, isSaved) {
+            const row = document.createElement('div');
+            row.className = 'search-item';
+            row.dataset.videoId = song.video_id;
+
+            // v2.2 アイコン区別 (Songs vs Videos)
+            const typeIcon = song.type === 'video' ? '🎬' : '🎵';
+
+            row.innerHTML = `
+                <div class="song-info-vertical">
+                    <div class="badges">
+                        <span class="tag-saved" style="display: ${isSaved ? 'inline-block' : 'none'}">SAVED</span>
+                        <span class="tag-no-guide" style="display: ${song.is_no_guide ? 'inline-block' : 'none'}">No Guide</span>
+                        <span class="tag-vocal" style="display: ${song.has_vocal ? 'inline-block' : 'none'}">Vocal</span>
+                        <span class="tag-key" style="display: ${song.key ? 'inline-block' : 'none'}">${song.key}</span>
+                    </div>
+                    <span class="song-title">${typeIcon} ${song.title}</span>
+                    <small>${song.artist} <span style="color:#666;">/ ${song.channel}</span></small>
+                    <span class="original-title">${song.original_title}</span>
+                </div>
+            `;
+            const btn = document.createElement('button');
+            btn.className = 'queue-btn'; btn.textContent = 'QUEUE';
+            btn.onclick = async () => {
+                let songToQueue = song; 
+                if (!isSaved) {
+                    btn.textContent = 'FETCHING...';
+                    try {
+                        const savedSong = await KaraokeCore.fetchAndSaveLyrics(song);
+                        songToQueue = savedSong; isSaved = true;
+                        row.querySelector('.tag-saved').style.display = 'inline-block';
+                        updateMyBookUI(); 
+                    } catch (e) { showActionToast('Unexpected Error: ' + e); btn.textContent = 'QUEUE'; return; }
+                }
+                KaraokeCore.addToQueue(songToQueue); updateQueueUI();
+                btn.textContent = 'DONE'; setTimeout(() => btn.textContent = 'QUEUE', 2000);
+                if (!isPlayerRunning) playNextInQueue();
+            };
+            row.appendChild(btn);
+            return row;
+        }
+
+        /* プレイヤー関連 */
+        function formatTime(seconds) {
+            const m = Math.floor(seconds / 60); const s = Math.floor(seconds % 60);
+            return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        }
+
+        async function playNextInQueue() {
+            const nextSong = KaraokeCore.getNextFromQueue();
+            updateQueueUI(); 
+            
+            if (!nextSong) {
+                isPlayerRunning = false; currentSong = null;
+                document.getElementById('lyrics-view').innerHTML = '<div id="status-msg" style="text-align:center; padding-top:20vh; color:#666;">SYSTEM READY<br><br>WAITING FOR INPUT...</div>';
+                document.getElementById('btn-play').textContent = '▶';
+                return;
+            }
+
+            isPlayerRunning = true;
+            currentSong = nextSong;
+            lastActiveIdx = -1;
+            if (typeof currentSong.playback_rate === 'undefined') currentSong.playback_rate = 1.0;
+            currentRawLrc = KaraokeCore.parseLRC(nextSong.lyrics);
+            applyOffsetAndRender();
+            document.getElementById('lyrics-view').scrollTop = 0;
+            ytPlayer.loadVideoById(nextSong.video_id);
+            ytPlayer.playVideo();
+        }
+
+        function applyOffsetAndRender() {
+            const offset = currentSong.offset_delta || 0;
+            const rate = currentSong.playback_rate || 1.0;
+            if(!currentRawLrc || currentRawLrc.length === 0) {
+                document.getElementById('lyrics-view').innerHTML = '<div id="status-msg" style="text-align:center; padding-top:20vh; color:#666;">NO LYRICS<br>(INSTRUMENTAL MODE)</div>';
+                currentLrc = []; return;
+            }
+            currentLrc = currentRawLrc.map(line => ({ time: (line.time * rate) + offset, text: line.text }));
+            renderLrcLines();
+        }
+
+        function renderLrcLines() {
+            const view = document.getElementById('lyrics-view');
+            const spacer = '<div class="lyric-spacer"></div>';
+            view.innerHTML = spacer + currentLrc.map((l, i) => `<div id="lrc-${i}" class="lyric-line" onclick="adjustOffset(${i})">${l.text}</div>`).join('') + spacer;
+        }
+
+        async function adjustOffset(index) {
+            if (!currentSong || !ytPlayer || isCalibrating) return;
+            const now = ytPlayer.getCurrentTime();
+            const originalTime = currentRawLrc[index].time;
+            const rate = currentSong.playback_rate || 1.0;
+            const newOffset = (now - 1.0) - (originalTime * rate);
+            currentSong.offset_delta = newOffset;
+            await KaraokeCore.updateSongTiming(currentSong.video_id, newOffset, rate);
+            applyOffsetAndRender(); lastActiveIdx = -1;
+            const toast = document.getElementById('offset-toast');
+            toast.innerText = `Offset: ${newOffset.toFixed(2)}s`;
+            toast.style.opacity = 1; setTimeout(() => toast.style.opacity = 0, 2000);
+        }
+
+        function startLrcSync() {
+            if (syncTimer) clearInterval(syncTimer);
+            const duration = ytPlayer.getDuration();
+            const seekBar = document.getElementById('seek-bar');
+            document.getElementById('duration-time').textContent = formatTime(duration);
+            seekBar.max = duration;
+            syncTimer = setInterval(() => {
+                const currentTime = ytPlayer.getCurrentTime();
+                if (!isUserSeeking) {
+                    seekBar.value = currentTime;
+                    document.getElementById('current-time').textContent = formatTime(currentTime);
+                    updateSeekColor();
+                }
+                if(!currentLrc.length) return;
+                let activeIdx = -1;
+                for (let i = 0; i < currentLrc.length; i++) {
+                    if (currentTime >= currentLrc[i].time) activeIdx = i; else break;
+                }
+                if (activeIdx !== -1 && activeIdx !== lastActiveIdx) {                    
+                    lastActiveIdx = activeIdx;
+                    document.querySelectorAll('.lyric-line').forEach(el => el.classList.remove('active', 'history'));
+                    const activeEl = document.getElementById(`lrc-${activeIdx}`);
+                    if (activeEl) { activeEl.classList.add('active'); activeEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+                    if (activeIdx > 0) {
+                        const historyEl = document.getElementById(`lrc-${activeIdx - 1}`);
+                        if (historyEl) historyEl.classList.add('history');
+                    }
+                }
+            }, 200);
+        }
+
+        function showLyrics(song) {
+            viewingSong = song;
+            document.getElementById('modalTitle').textContent = `${song.title} - ${song.artist}`;
+            document.getElementById('lyricsDisplay').textContent = song.lyrics || "NO LYRICS DATA";
+            document.getElementById('lyricsModal').style.display = 'block';
+        }
+        function closeModal() { viewingSong = null; document.getElementById('lyricsModal').style.display = 'none'; }
+        function updateSeekColor() {
+            const seekBar = document.getElementById('seek-bar');
+            if (!seekBar.max || seekBar.max == 0) return;
+            seekBar.style.backgroundSize = `${(seekBar.value / seekBar.max) * 100}% 100%`;
+        }
+    </script>
+</body>
+</html>
