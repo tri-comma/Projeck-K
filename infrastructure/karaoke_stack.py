@@ -60,11 +60,18 @@ class KaraokeStack(Stack):
             handler="main.handler", # Mangumでラップしたエントリーポイント
             code=_lambda.Code.from_asset(
                 path="backend", # backendフォルダを参照
+                exclude=[
+                    ".venv",
+                    "venv",
+                    "__pycache__",
+                    "*.pyc",
+                    ".git"
+                ],
                 bundling=cdk.BundlingOptions(  # ここを _lambda から cdk に変更
                     image=_lambda.Runtime.PYTHON_3_12.bundling_image,
                     command=[
                         "bash", "-c",
-                        "pip install -r requirements.txt -t /asset-output && cp -au . /asset-output"
+                        "cp -R . /asset-output && pip install --platform manylinux2014_aarch64 --target /asset-output --implementation cp --python-version 3.12 --only-binary=:all: -r requirements.txt"
                     ],
                 )
             ),
