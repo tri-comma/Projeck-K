@@ -1512,8 +1512,9 @@
 
                     const lowerQuery = query.toLowerCase();
                     const myBookResults = allSaved.filter(song =>
-                        song.title.toLowerCase().includes(lowerQuery) ||
-                        song.artist.toLowerCase().includes(lowerQuery)
+                        (song.title.toLowerCase().includes(lowerQuery) ||
+                            song.artist.toLowerCase().includes(lowerQuery)) &&
+                        !blockedIds.has(song.video_id)
                     );
 
                     let filteredYT = [];
@@ -1807,7 +1808,7 @@
         let calibTimeStartLrc = 0;
         let calibTimeEndLrc = 0;
 
-        let currentArtistFilter = "";
+        let currentArtistFilter = null;
         let viewingSong = null;
 
         let editingSong = null;
@@ -1954,17 +1955,19 @@
                 if (currentSong) {
                     const errorId = currentSong.video_id;
 
-                    // 1. ブラックリスト登録
+                    // 1. ブラックリスト登録 & 保存済みからの削除
                     await KaraokeCore.addToBlacklist(currentSong);
+                    await KaraokeCore.removeSavedSong(errorId);
 
-                    // 2. DOMから即時削除 (検索結果リスト)
+                    // 2. UIの同期
                     const row = document.querySelector(`.search-item[data-video-id="${errorId}"]`);
                     if (row) row.remove();
+                    updateMyBookUI(); // LOCAL DATABASEを即時更新
 
                     // 3. 通知
-                    showActionToast("Playback restricted by owner. Skipping...");
+                    showActionToast("Video restricted by owner. Removed from My Book.");
 
-                    // 4. スキップ (通常のスキップ処理を流用)
+                    // 4. スキップ
                     playNextInQueue();
                 }
             } else {
@@ -2200,16 +2203,26 @@
             const grid = document.getElementById('artistGrid');
             grid.innerHTML = '';
 
-            // ALL ARTISTS
+            // ALL ARTISTS (Reset filter)
             const allBtn = document.createElement('div');
-            allBtn.className = `artist-btn all ${currentArtistFilter === "" ? "active" : ""}`;
+            allBtn.className = `artist-btn all ${currentArtistFilter === null ? "active" : ""}`;
             allBtn.textContent = "ALL ARTISTS";
-            allBtn.onclick = () => selectArtist("");
+            allBtn.onclick = () => selectArtist(null);
             grid.appendChild(allBtn);
 
-            // 各アーティスト
-            const artists = [...new Set(cachedMyBookSongs.map(s => s.artist))].sort();
-            artists.forEach(artist => {
+            const allArtistNames = [...new Set(cachedMyBookSongs.map(s => s.artist || ""))].sort();
+
+            // UNKNOWN ARTIST (Artist name is empty) - Always at the top left
+            if (allArtistNames.includes("")) {
+                const unknownBtn = document.createElement('div');
+                unknownBtn.className = `artist-btn ${currentArtistFilter === "" ? "active" : ""}`;
+                unknownBtn.textContent = "(UNKNOWN ARTIST)";
+                unknownBtn.onclick = () => selectArtist("");
+                grid.appendChild(unknownBtn);
+            }
+
+            // Other artists
+            allArtistNames.filter(a => a !== "").forEach(artist => {
                 const btn = document.createElement('div');
                 btn.className = `artist-btn ${currentArtistFilter === artist ? "active" : ""}`;
                 btn.textContent = artist;
@@ -2231,7 +2244,8 @@
         function selectArtist(artist) {
             currentArtistFilter = artist;
             let label = artist;
-            if (artist === "") label = "ALL ARTISTS";
+            if (artist === null) label = "ALL ARTISTS";
+            if (artist === "") label = "(UNKNOWN ARTIST)";
             if (artist === "__BLOCKED__") label = "BLOCKED";
             document.getElementById('btn-artist-select').textContent = label;
             renderMyBookList();
@@ -2253,7 +2267,7 @@
 
             const filteredSongs = cachedMyBookSongs.filter(song => {
                 const matchText = song.title.toLowerCase().includes(textFilter) || song.artist.toLowerCase().includes(textFilter);
-                const matchArtist = currentArtistFilter === "" || song.artist === currentArtistFilter;
+                const matchArtist = currentArtistFilter === null || (song.artist || "") === currentArtistFilter;
                 return matchText && matchArtist;
             });
 
