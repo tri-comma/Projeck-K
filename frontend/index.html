@@ -326,7 +326,8 @@
         }
 
         .lyric-line.history,
-        .lyric-line.active+.lyric-line {
+        .lyric-line.active+.lyric-line,
+        #lrc-0:not(.active) {
             color: rgba(255, 255, 255, 0.7);
             font-size: 1.9rem;
             filter: blur(0px);
@@ -2454,18 +2455,24 @@
             }
 
             const nextSong = KaraokeCore.getNextFromQueue();
-            updateQueueUI();
 
             if (!nextSong) {
-                isPlayerRunning = false; currentSong = null;
+                isPlayerRunning = false;
+                currentSong = null;
+                updateQueueUI(); // Clear the Now Playing status
                 document.getElementById('lyrics-view').innerHTML = '<div id="status-msg" style="text-align:center; padding-top:20vh; color:#666;">SYSTEM READY<br><br>WAITING FOR INPUT...</div>';
                 document.getElementById('btn-play').textContent = '▶';
                 return;
             }
 
+            // Update state BEFORE updating UI
             isPlayerRunning = true;
             currentSong = nextSong;
             lastActiveIdx = -1;
+
+            // Refresh UI to show the new currentSong and remove it from the waiting list
+            updateQueueUI();
+
             if (typeof currentSong.playback_rate === 'undefined') currentSong.playback_rate = 1.0;
             currentRawLrc = KaraokeCore.parseLRC(nextSong.lyrics);
             applyOffsetAndRender();
