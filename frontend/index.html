@@ -2,6 +2,15 @@
 <html lang="ja">
 
 <head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-R7W2JDYSBY"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+
+        gtag('config', 'G-R7W2JDYSBY');
+    </script>
     <meta charset="UTF-8">
     <title>Tesla Karaoke</title>
     <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
@@ -1736,6 +1745,7 @@
                     let source = "None";
 
                     try {
+                        this._track('add_to_my_book', { video_id: song.video_id, title: song.title });
                         const candidates = await searchAndScoreLRCLib(song.title, song.artist, song.duration);
                         const best = candidates.length > 0 ? candidates[0] : null;
 
@@ -1870,6 +1880,7 @@
                         request.onsuccess = () => resolve();
                         request.onerror = () => reject(request.error);
                     });
+                    this._track('remove_from_my_book', { video_id: videoId });
                     songQueue = songQueue.filter(s => s.video_id !== videoId);
                 },
 
@@ -1939,6 +1950,7 @@
                         playback_rate: song.playback_rate || 1.0,
                         queue_id: Date.now() + Math.random()
                     };
+                    this._track('add_to_queue', { video_id: safeSong.video_id, title: safeSong.title });
                     songQueue.push(safeSong);
                     return songQueue;
                 },
@@ -1966,7 +1978,12 @@
                     });
                     return result.sort((a, b) => a.time - b.time);
                 },
-                getNextFromQueue() { return songQueue.length === 0 ? null : songQueue.shift(); }
+                getNextFromQueue() { return songQueue.length === 0 ? null : songQueue.shift(); },
+
+                // --- Analytics Helper (KaraokeCore internal calls) ---
+                _track(name, params) {
+                    if (window.logEvent) window.logEvent(name, params);
+                }
             };
         })();
     </script>
@@ -2005,7 +2022,21 @@
         let isManualArtistOn = true;
         let currentCandidateSong = null;
 
+
         let toastTimeout;
+
+        // ============================================================
+        //  GA4 Analytics Wrapper
+        // ============================================================
+        const isDebug = new URLSearchParams(window.location.search).get('debug') === '1';
+        window.logEvent = function (name, params = {}) {
+            if (isDebug) {
+                console.log(`[GA_EVENT] ${name}`, params);
+            }
+            if (typeof gtag === 'function') {
+                gtag('event', name, params);
+            }
+        };
 
         /* --- 初期化・イベント設定 --- */
         window.onload = () => {
@@ -2153,6 +2184,8 @@
                     // 1. ブラックリスト登録 & 保存済みからの削除
                     await KaraokeCore.addToBlacklist(currentSong);
                     await KaraokeCore.removeSavedSong(errorId);
+
+                    logEvent('playback_error', { video_id: errorId, error_code: event.data, title: currentSong.title });
 
                     // 2. UIの同期
                     const row = document.querySelector(`.search-item[data-video-id="${errorId}"]`);
@@ -2342,6 +2375,7 @@
                 if (currentSong && currentSong.video_id === song.video_id) {
                     currentSong.lyrics = newLyrics; currentRawLrc = KaraokeCore.parseLRC(newLyrics); applyOffsetAndRender();
                 }
+                logEvent('select_lyrics_candidate', { video_id: song.video_id, candidate_id: candidate.id, score: candidate.score });
                 showActionToast(`Lyrics Updated: "${candidate.trackName}"`, async () => {
                     await KaraokeCore.saveManualLyrics(song, oldLyrics); updateMyBookUI();
                     if (currentSong && currentSong.video_id === song.video_id) {
@@ -2557,6 +2591,7 @@
         async function handleUnifiedSearch() {
             const q = document.getElementById('searchInput').value;
             if (!q.trim()) return;
+            logEvent('search', { search_term: q });
             lastSearchQuery = q;
             nextPageToken = null;
             const resultsDiv = document.getElementById('searchResults');
@@ -2682,6 +2717,14 @@
             // Refresh UI to show the new currentSong and remove it from the waiting list
             updateQueueUI();
 
+            logEvent('play_start', {
+                video_id: nextSong.video_id,
+                title: nextSong.title,
+                artist: nextSong.artist,
+                channel: nextSong.channel,
+                result_type: nextSong.result_type
+            });
+
             if (typeof currentSong.playback_rate === 'undefined') currentSong.playback_rate = 1.0;
             currentRawLrc = KaraokeCore.parseLRC(nextSong.lyrics);
             applyOffsetAndRender();
@@ -2717,6 +2760,7 @@
             const newOffset = (now - 1.0) - (originalTime * rate);
             currentSong.offset_delta = newOffset;
             await KaraokeCore.updateSongTiming(currentSong.video_id, newOffset, rate);
+            logEvent('adjust_timing', { video_id: currentSong.video_id, offset: newOffset });
             applyOffsetAndRender(); lastActiveIdx = -1;
             const toast = document.getElementById('offset-toast');
             toast.innerText = `Offset: ${newOffset.toFixed(2)}s`;
@@ -2803,7 +2847,17 @@
                 monitor.style.bottom = 'auto';
             };
 
-            const endDrag = () => { if (isDragging) { isDragging = false; handle.style.color = "var(--neon-blue)"; } };
+            const endDrag = () => {
+                if (isDragging) {
+                    isDragging = false;
+                    handle.style.color = "var(--neon-blue)";
+
+                    // 最終位置の統計を取る (画面サイズに対する%で記録)
+                    const posX = Math.round((parseInt(monitor.style.left) / window.innerWidth) * 100);
+                    const posY = Math.round((parseInt(monitor.style.top) / window.innerHeight) * 100);
+                    logEvent('drag_monitor', { pos_x_percent: posX, pos_y_percent: posY });
+                }
+            };
 
             handle.addEventListener('mousedown', startDrag);
             window.addEventListener('mousemove', doDrag);
