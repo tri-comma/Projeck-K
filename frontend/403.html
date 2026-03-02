@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Access Restricted | Project-K</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #050505;
+            --neon-pink: #ff00ff;
+            --neon-blue: #6dcafd;
+            --text-main: #ffffff;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Share Tech Mono', sans-serif;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+        }
+
+        .container {
+            text-align: center;
+            padding: 40px;
+            border: 2px solid var(--neon-pink);
+            border-radius: 20px;
+            background: rgba(255, 0, 255, 0.05);
+            box-shadow: 0 0 30px rgba(255, 0, 255, 0.2);
+            max-width: 500px;
+            animation: pulse 2s infinite alternate;
+        }
+
+        @keyframes pulse {
+            from {
+                box-shadow: 0 0 20px rgba(255, 0, 255, 0.2);
+            }
+
+            to {
+                box-shadow: 0 0 50px rgba(255, 0, 255, 0.4);
+            }
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            color: var(--neon-pink);
+            text-shadow: 0 0 10px var(--neon-pink);
+        }
+
+        p {
+            font-size: 1.2rem;
+            line-height: 1.6;
+            margin-bottom: 30px;
+            color: var(--neon-blue);
+        }
+
+        .icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+
+        .tesla-msg {
+            background: rgba(109, 202, 253, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid var(--neon-blue);
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="icon">🚫</div>
+        <h1>403 ACCESS DENIED</h1>
+        <p>このコンテンツはセキュリティ保護のため、ご利用環境を制限しています。</p>
+        <div class="tesla-msg">
+            テスラ車専用のブラウザからアクセスしてください。<br>
+            Please access from your Tesla vehicle browser.
+        </div>
+    </div>
+</body>
+
+</html>

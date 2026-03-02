@@ -45,6 +45,28 @@
                 linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
                 linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
             background-size: 50px 50px;
+
+            /* コピー禁止設定 */
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        }
+
+        /* 入力エリアは入力を可能にする */
+        input,
+        textarea {
+            user-select: text;
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
+        }
+
+        /* 印刷禁止設定 */
+        @media print {
+            body {
+                display: none !important;
+            }
         }
 
         ::-webkit-scrollbar {
@@ -2882,6 +2904,21 @@
                 }, 300);
             };
         }
+
+        // コピー・右クリック禁止
+        document.addEventListener('copy', (e) => {
+            if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
+            e.preventDefault();
+        });
+        document.addEventListener('contextmenu', (e) => {
+            if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
+            e.preventDefault();
+        });
+
+        // 印刷禁止メッセージ (ブラウザによっては有効)
+        window.onbeforeprint = () => {
+            alert("この画面の印刷は禁止されています。");
+        };
 
         // 追加のフェードアウト用スタイル
         const style = document.createElement('style');

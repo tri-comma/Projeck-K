@@ -17,7 +17,12 @@ CONFIG = {
     "stack_name": "k-tri-comma-com-stack",
     
     # 開発用フラグ
-    "is_dev": True
+    "is_dev": True,
+    
+    # 許可IPリスト
+    "allowed_ips": [
+        "127.0.0.1/32" # 必要に応じて自身のIPを追加してください
+    ]
 }
 
 # --- スタックの定義 ---
