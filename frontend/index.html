@@ -175,31 +175,13 @@
             justify-content: flex-end;
         }
 
-        /* Video Monitor Styles */
-        .video-monitor {
-            position: fixed;
-            bottom: 80px;
-            right: 20px;
-            width: 320px;
-            height: 208px;
-            /* 180 (video) + 28 (handle) */
-            background: #000;
-            border: 2px solid var(--neon-blue);
-            border-radius: 8px;
-            box-shadow: 0 0 30px rgba(0, 0, 0, 0.8), 0 0 10px var(--neon-blue);
-            z-index: 3000;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            touch-action: none;
-        }
-
         .monitor-handle {
             height: 28px;
             background: rgba(0, 0, 0, 0.9);
             display: flex;
             align-items: center;
-            justify-content: center;
+            justify-content: space-between;
+            padding: 0 10px;
             cursor: move;
             font-size: 10px;
             color: var(--neon-blue);
@@ -207,6 +189,51 @@
             letter-spacing: 2px;
             border-bottom: 1px solid #333;
             user-select: none;
+        }
+
+        .monitor-controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .monitor-btn {
+            cursor: pointer;
+            font-size: 14px;
+            opacity: 0.7;
+            transition: 0.2s;
+        }
+
+        .monitor-btn:hover {
+            opacity: 1;
+            color: var(--neon-pink);
+        }
+
+        .video-monitor {
+            position: fixed;
+            bottom: 80px;
+            left: calc(100vw - 384px - 20px);
+            /* 初期位置を右下に設定 (leftで管理) */
+            width: 384px;
+            height: 244px;
+            background: #000;
+            border: 2px solid var(--neon-blue);
+            border-radius: 8px;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.9);
+            z-index: 3000;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            touch-action: none;
+            transition: all 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+        }
+
+        .video-monitor.theater-mode {
+            width: 80vw !important;
+            height: 50vh !important;
+            top: 15vh !important;
+            left: 10vw !important;
+            border-color: var(--neon-pink);
+            box-shadow: 0 0 100px rgba(0, 0, 0, 0.9), 0 0 20px var(--neon-pink);
         }
 
         .video-monitor #yt-bg {
@@ -1442,7 +1469,13 @@
 
     <!-- Floating Video Monitor -->
     <div id="video-monitor" class="video-monitor">
-        <div class="monitor-handle" id="monitor-handle">VIDEO MONITOR (Drag)</div>
+        <div class="monitor-handle" id="monitor-handle">
+            <span>VIDEO MONITOR</span>
+            <div class="monitor-controls">
+                <span class="monitor-btn" onclick="toggleTheaterMode()" title="Theater Mode">🔲</span>
+                <span class="monitor-btn" onclick="openOnYouTube()" title="Open on YouTube">↗️</span>
+            </div>
+        </div>
         <div id="yt-bg"></div>
     </div>
 
@@ -2144,7 +2177,108 @@
                     document.getElementById('edit-title').value = editingSong.original_title || editingSong.title;
                 }
             };
+
+            const searchInputFocus = document.getElementById('searchInput');
+            if (searchInputFocus) {
+                searchInputFocus.addEventListener('focus', () => moveMonitor('.bottom-container .panel:first-child'));
+            }
+            const myBookInputFocus = document.getElementById('myBookSearchInput');
+            if (myBookInputFocus) {
+                myBookInputFocus.addEventListener('focus', () => moveMonitor('.bottom-container .panel:last-child'));
+            }
+
+            // 操作されたパネルのセレクタを渡す
+            const leftPanelSel = '.bottom-container .panel:first-child';
+            const leftPanelArea = document.querySelector(leftPanelSel);
+            if (leftPanelArea) {
+                leftPanelArea.addEventListener('pointerdown', () => moveMonitor(leftPanelSel), { capture: true });
+            }
+            const rightPanelSel = '.bottom-container .panel:last-child';
+            const rightPanelArea = document.querySelector(rightPanelSel);
+            if (rightPanelArea) {
+                rightPanelArea.addEventListener('pointerdown', () => moveMonitor(rightPanelSel), { capture: true });
+            }
+            const queueAreaSel = '.queue-area';
+            const queueArea = document.querySelector(queueAreaSel);
+            if (queueArea) {
+                queueArea.addEventListener('pointerdown', () => moveMonitor(queueAreaSel), { capture: true });
+            }
         };
+
+        let preTheaterPos = null;
+
+        function moveMonitor(panelSelector) {
+            const monitor = document.getElementById('video-monitor');
+            if (monitor.classList.contains('theater-mode')) return;
+
+            const panel = document.querySelector(panelSelector);
+            if (!panel) return;
+
+            const mRect = monitor.getBoundingClientRect();
+            const pRect = panel.getBoundingClientRect();
+
+            // 物理的な重なり判定 (Overlap Detection)
+            const isOverlapping = !(
+                mRect.right < pRect.left ||
+                mRect.left > pRect.right ||
+                mRect.bottom < pRect.top ||
+                mRect.top > pRect.bottom
+            );
+
+            // 重なっていないなら何もしない
+            if (!isOverlapping) return;
+
+            const margin = 20;
+            const screenMid = window.innerWidth / 2;
+            let targetLeft = null;
+
+            // パネルが左側にあるか右側にあるかで回避方向を決める
+            const panelMid = pRect.left + pRect.width / 2;
+            if (panelMid < screenMid) {
+                // 左側パネルを塞いでいる -> 右へ
+                targetLeft = window.innerWidth - monitor.offsetWidth - margin;
+            } else {
+                // 右側パネル（またはQueue）を塞いでいる -> 左へ
+                targetLeft = margin;
+            }
+
+            if (targetLeft !== null && Math.abs(mRect.left - targetLeft) > 10) {
+                monitor.style.left = targetLeft + 'px';
+            }
+        }
+
+        function toggleTheaterMode() {
+            const monitor = document.getElementById('video-monitor');
+            const isEntering = !monitor.classList.contains('theater-mode');
+
+            if (isEntering) {
+                // 現在の状態を保存
+                preTheaterPos = {
+                    left: monitor.style.left || getComputedStyle(monitor).left,
+                    top: monitor.style.top || getComputedStyle(monitor).top,
+                    bottom: monitor.style.bottom || getComputedStyle(monitor).bottom
+                };
+                monitor.classList.add('theater-mode');
+            } else {
+                monitor.classList.remove('theater-mode');
+                // 保存した状態に戻す
+                if (preTheaterPos) {
+                    monitor.style.left = preTheaterPos.left;
+                    monitor.style.top = preTheaterPos.top;
+                    monitor.style.bottom = preTheaterPos.bottom;
+                }
+            }
+            logEvent('toggle_theater_mode', { is_active: isEntering });
+        }
+
+        function openOnYouTube() {
+            if (currentSong && currentSong.video_id) {
+                window.open(`https://www.youtube.com/watch?v=${currentSong.video_id}`, '_blank');
+                logEvent('open_youtube_external', { video_id: currentSong.video_id });
+            } else {
+                showActionToast("No video playing");
+            }
+        }
 
         function showActionToast(message, undoCallback = null) {
             const toast = document.getElementById('action-toast');
@@ -2520,7 +2654,7 @@
                 const matchText = song.title.toLowerCase().includes(textFilter) || song.artist.toLowerCase().includes(textFilter);
                 const matchArtist = currentArtistFilter === null || (song.artist || "") === currentArtistFilter;
                 return matchText && matchArtist;
-            });
+            }).sort((a, b) => (a.title || "").localeCompare(b.title || "", 'ja'));
 
             filteredSongs.forEach(song => {
                 const row = document.createElement('div');
@@ -2841,6 +2975,7 @@
             let currentX, currentY;
 
             const startDrag = (e) => {
+                if (monitor.classList.contains('theater-mode')) return; // 最大化時はドラッグ不可
                 isDragging = true;
                 const clientX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
                 const clientY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
@@ -2850,6 +2985,7 @@
                 currentX = rect.left;
                 currentY = rect.top;
                 handle.style.color = "var(--neon-pink)";
+                monitor.style.transition = 'none'; // ドラッグ中はアニメーションを切る
             };
 
             const doDrag = (e) => {
@@ -2873,11 +3009,19 @@
                 if (isDragging) {
                     isDragging = false;
                     handle.style.color = "var(--neon-blue)";
+                    monitor.style.transition = ''; // アニメーションを戻す
+
+                    // ドラッグ後の位置を確定
+                    const rect = monitor.getBoundingClientRect();
+                    monitor.style.top = rect.top + 'px';
+                    monitor.style.left = rect.left + 'px';
+                    monitor.style.bottom = 'auto';
+                    monitor.style.right = 'auto';
 
                     // 最終位置の統計を取る (画面サイズに対する%で記録)
-                    const posX = Math.round((parseInt(monitor.style.left) / window.innerWidth) * 100);
-                    const posY = Math.round((parseInt(monitor.style.top) / window.innerHeight) * 100);
-                    logEvent('drag_monitor', { pos_x_percent: posX, pos_y_percent: posY });
+                    const posX = Math.round((rect.left / window.innerWidth) * 100);
+                    const posY = Math.round((rect.top / window.innerHeight) * 100);
+                    logEvent('monitor_drag_end', { pos_x_pct: posX, pos_y_pct: posY });
                 }
             };
 
