@@ -247,4 +247,6 @@ class KaraokeStack(Stack):
             destination_bucket=frontend_bucket,
             distribution=distribution, # キャッシュ無効化のためDistributionを指定
             distribution_paths=["/*"], # 全ファイルのキャッシュをクリア
+            # 車載ブラウザが古い index.html を使い続けないよう、毎回サーバーに確認させる
+            cache_control=[s3deploy.CacheControl.no_cache()],
         )
