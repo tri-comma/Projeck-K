@@ -62,7 +62,7 @@
         })();
     </script>
     <title>Tesla Karaoke</title>
-    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+JP:wght@400;500;700;900&family=Noto+Sans+Symbols&family=Noto+Sans+Symbols+2&family=Noto+Sans+Runic&display=swap" rel="stylesheet">
     <style>
         /* ============================================================
            Cyberpunk & Neon Theme Variables
@@ -95,7 +95,7 @@
         body {
             background-color: var(--bg-color);
             color: var(--text-main);
-            font-family: 'Share Tech Mono', 'Courier New', monospace;
+            font-family: 'Share Tech Mono', 'Courier New', 'Noto Sans Symbols', 'Noto Sans Symbols 2', 'Noto Sans Runic', monospace;
             margin: 0;
             display: flex;
             flex-direction: column;
@@ -1729,11 +1729,11 @@
             box-sizing: border-box;
             background: var(--bg-color);
             background-image: none;
-            font-family: 'Noto Sans JP', system-ui, sans-serif;
+            font-family: 'Noto Sans JP', 'Noto Sans Symbols', 'Noto Sans Symbols 2', 'Noto Sans Runic', system-ui, sans-serif;
         }
 
         button {
-            font-family: 'Noto Sans JP', system-ui, sans-serif;
+            font-family: 'Noto Sans JP', 'Noto Sans Symbols', 'Noto Sans Symbols 2', 'Noto Sans Runic', system-ui, sans-serif;
             text-transform: none;
             letter-spacing: 0.02em;
         }
@@ -1858,8 +1858,13 @@
             background: transparent;
         }
 
+        /* 最初の行・最後の行も上から30%の位置まで動かせるよう、前後に余白 */
+        .lyric-spacer {
+            height: calc(100 * var(--vh));
+        }
+
         .lyric-line {
-            font-family: 'Noto Sans JP', system-ui, sans-serif;
+            font-family: 'Noto Sans JP', 'Noto Sans Symbols', 'Noto Sans Symbols 2', 'Noto Sans Runic', system-ui, sans-serif;
             font-weight: 500;
             color: rgba(238, 241, 247, 0.38);
             filter: none;
@@ -1927,7 +1932,7 @@
         }
 
         .time-info {
-            font-family: 'Share Tech Mono', monospace;
+            font-family: 'Share Tech Mono', 'Noto Sans Symbols', 'Noto Sans Symbols 2', 'Noto Sans Runic', monospace;
             font-size: 18px;
             color: var(--text-2);
             min-width: 120px;
@@ -1996,7 +2001,7 @@
         }
 
         .side-info {
-            font-family: Georgia, serif;
+            font-family: Georgia, 'Noto Sans Symbols', 'Noto Sans Symbols 2', 'Noto Sans Runic', serif;
             font-style: italic;
             font-size: 18px;
             color: var(--text-3);
@@ -2059,7 +2064,7 @@
         }
 
         input[type="text"] {
-            font-family: 'Noto Sans JP', system-ui, sans-serif;
+            font-family: 'Noto Sans JP', 'Noto Sans Symbols', 'Noto Sans Symbols 2', 'Noto Sans Runic', system-ui, sans-serif;
             font-size: 18px;
             height: var(--tap);
             padding: 0 16px;
@@ -2538,7 +2543,7 @@
         }
 
         #lyricsDisplay {
-            font-family: 'Noto Sans JP', system-ui, sans-serif;
+            font-family: 'Noto Sans JP', 'Noto Sans Symbols', 'Noto Sans Symbols 2', 'Noto Sans Runic', system-ui, sans-serif;
             font-size: 17px;
             background: #0c0f15;
             color: var(--text-2);
@@ -2612,7 +2617,7 @@
                     <button class="rec-tap" onpointerdown="tapRecordNext(event)">この行の歌い出しでタップ</button>
                 </div>
                 <div class="rec-actions" id="rec-actions-done">
-                    <button class="rec-back" onclick="startTapRecording()">↺ やり直す</button>
+                    <button class="rec-back" onclick="startTapRecording()">やり直す</button>
                     <button class="rec-tap rec-save" onclick="saveTapRecording()">✓ タイミングを保存</button>
                 </div>
             </div>
@@ -2624,7 +2629,7 @@
 
             <div class="lyrics-toolbar">
                 <button id="btn-settings" onclick="toggleSettingsPanel()" title="表示設定">⚙</button>
-                <button id="btn-rec" onclick="startTapRecording()" title="タップでタイミングを収録">⏺ 収録</button>
+                <button id="btn-rec" onclick="startTapRecording()" title="タップでタイミングを収録">⏺ REC</button>
                 <button id="btn-lyrics-max" onclick="toggleLyricsMax()" title="歌詞エリアを最大化">⛶</button>
             </div>
 
@@ -4502,7 +4507,7 @@
             if (typeof currentSong.playback_rate === 'undefined') currentSong.playback_rate = 1.0;
             currentRawLrc = KaraokeCore.parseLRC(nextSong.lyrics);
             applyOffsetAndRender();
-            document.getElementById('lyrics-view').scrollTop = 0;
+            resetLyricScroll();
 
             console.log("Loading Video ID:", nextSong.video_id);
             window.ytPlayer.loadVideoById(nextSong.video_id);
@@ -4695,7 +4700,7 @@
 
         function recenterActiveLyric() {
             const activeEl = document.querySelector('.lyric-line.active');
-            if (activeEl) setTimeout(() => activeEl.scrollIntoView({ block: 'center' }), 50);
+            if (activeEl) setTimeout(() => scrollLyricTo(activeEl, false), 50);
         }
 
         /* ---------- 画面全体のサイズ（head の Tesla ズーム打ち消しと同じ仕組み） ---------- */
@@ -4758,7 +4763,7 @@
             document.getElementById('btn-lyrics-max').classList.toggle('active', on);
             refreshMonitorDock();
             const activeEl = document.querySelector('.lyric-line.active');
-            if (activeEl) setTimeout(() => activeEl.scrollIntoView({ block: 'center' }), 50);
+            if (activeEl) setTimeout(() => scrollLyricTo(activeEl, false), 50);
             logEvent('toggle_lyrics_max', { is_active: on });
         }
 
@@ -4800,7 +4805,7 @@
                     lastActiveIdx = activeIdx;
                     document.querySelectorAll('.lyric-line').forEach(el => el.classList.remove('active', 'history'));
                     const activeEl = document.getElementById(`lrc-${activeIdx}`);
-                    if (activeEl) { activeEl.classList.add('active'); activeEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+                    if (activeEl) { activeEl.classList.add('active'); scrollLyricTo(activeEl, true); }
                     if (activeIdx > 0) {
                         const historyEl = document.getElementById(`lrc-${activeIdx - 1}`);
                         if (historyEl) historyEl.classList.add('history');
@@ -5039,6 +5044,38 @@
                 row.appendChild(info); row.appendChild(moreBtn); row.appendChild(queueBtn); row.appendChild(actions);
                 div.appendChild(row);
             });
+        };
+
+        /* ---------- 歌詞の表示位置 ----------
+           今の行（1行でも折り返して複数行でも、その中心）を画面の上から30%の位置に置く。
+           検索入力中など歌詞エリアが低いときは、歌詞エリアの中央を上限にする。 */
+        const LYRIC_ANCHOR = 0.30;
+        function lyricAnchorY(view) {
+            const stage = view.offsetParent || view.parentElement;
+            const y = stage.clientHeight * LYRIC_ANCHOR - view.offsetTop;
+            return Math.max(40, Math.min(y, view.clientHeight / 2));
+        }
+        function scrollLyricTo(el, smooth) {
+            const view = document.getElementById('lyrics-view');
+            if (!el || !view.contains(el)) return;
+            const go = (behavior) => view.scrollTo({ top: el.offsetTop + el.offsetHeight / 2 - lyricAnchorY(view), behavior });
+            go(smooth ? 'smooth' : 'instant');
+            // 今の行は文字が大きくなるアニメーションで高さが変わるので、終わった後に合わせ直す
+            clearTimeout(scrollLyricTo._t);
+            scrollLyricTo._t = setTimeout(() => go('smooth'), 450);
+        }
+        function resetLyricScroll() {
+            const first = document.getElementById('lrc-0');
+            if (first) scrollLyricTo(first, false);
+            else document.getElementById('lyrics-view').scrollTop = 0;
+        }
+        renderLrcLines = (function (orig) {
+            return function () { orig.apply(this, arguments); resetLyricScroll(); };
+        })(renderLrcLines);
+        recenterActiveLyric = function () {
+            const activeEl = document.querySelector('.lyric-line.active');
+            if (activeEl) setTimeout(() => scrollLyricTo(activeEl, false), 50);
+            else setTimeout(resetLyricScroll, 50);
         };
 
         window.addEventListener('load', () => {
